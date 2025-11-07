@@ -372,7 +372,7 @@ local function RegisterStatusToggles()
         })
 
         Aurora.Rotation.HardControlInterruptToggle = Aurora:AddGlobalToggle({
-            label = "硬控打断",
+            label = "硬控",
             var = "MiracleWarrior.hard_control_interrupt_enabled",
             icon = 46968,
             tooltip = "启用/禁用硬控打断（震荡波、风暴之锤、挑战怒吼）"
