@@ -1756,9 +1756,7 @@ local function SmartBattleShout()
 
 
 
-    if IsSkillOnCooldown("battle_shout") then
-        return false
-    end
+
 
 
 
@@ -1816,8 +1814,6 @@ local function SmartBattleShout()
         local success = spells.Battle_Shout:cast(player)
 
         if success then
-            SetSkillCooldown("battle_shout", 300)
-
             return true
         end
     end
