@@ -400,7 +400,7 @@ local function ShouldUseLongCooldown()
 
 
     if target and target.exists and target.alive then
-        local ttd = target.ttd or 999
+        local ttd = target.rawttd or 999
 
         if ttd < config.ttdThreshold then
             return false
@@ -600,7 +600,7 @@ local function SmartTrinketUse()
 
         if config.trinket2Mode == "cd" then
             shouldUseTrinket2 = true
-        elseif config.trinket2Mode == "avatar" and player.aura(spells.avatar.spellId) then
+        elseif config.trinket2Mode == "avatar" and player.aura(107574) then
             shouldUseTrinket2 = true
         elseif config.trinket2Mode == "health" and player.hp < config.trinket2HealthThreshold then
             shouldUseTrinket2 = true
@@ -703,7 +703,9 @@ local function SmartPotionUse()
 
                     if config.burstPotionMode == "cd" then
                         shouldUse = true
-                    elseif config.burstPotionMode == "avatar" and player.aura(spells.avatar.spellId) then
+                    end
+
+                    if config.burstPotionMode == "avatar" and player.aura(107574) then
                         shouldUse = true
                     end
 
@@ -2042,8 +2044,8 @@ local function Ooc()
 
 
 
-    if not player.combat then
-        SmartBattleShout()
+    if not player.combat and SmartBattleShout() then
+        return true
     end
 
 
