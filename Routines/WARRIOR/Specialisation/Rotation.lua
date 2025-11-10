@@ -1686,7 +1686,7 @@ local function Dps()
 
 
 
-    print(UnitTimeToDie(target, 0), ShouldUseLongCooldown())
+  
 
     -- 最高优先级：高危技能防御
 
