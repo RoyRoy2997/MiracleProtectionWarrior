@@ -336,30 +336,130 @@ end
 
 
 
--- TTD时间判断
+-- 【新增】自定义TTD函数 - 基于你提供的逻辑
+
+local function UnitTimeToDie(unit, percentage)
+    -- percentage: 需要把怪物打到百分之多少的百分比
+
+    -- 比如需要把怪物干到0，就传入0，需要干到50%就传入50
+
+
+
+    if not unit or not unit.exists then
+        return 0
+    end
+
+
+
+    percentage = percentage or 0
+
+
+
+    -- 如果是玩家或训练假人，返回很大的值
+
+    if unit.player or unit.isdummy then
+        return 8888
+    end
+
+
+
+    -- 计算还需要损失的血量
+
+    local health = unit.health - (unit.healthmax / 100 * percentage)
+
+    if health < 1 then
+        return 0
+    end
+
+
+
+    -- 修正系数
+
+    local CDRS1 = 0.65 -- 血量修正
+
+    local CDRS2 = 1.5  -- 攻击力修正
+
+
+
+    -- 玩家真实血量 * 血量系数修正
+
+    local prmh = player.healthmax * CDRS1
+
+
+
+    -- 计算40码内活着的治疗者数量
+
+    local active_heal_40y = 0
+
+    Aurora.friends:within(40):each(function(friend)
+        if friend.exists and friend.alive and friend.role == "HEALER" then
+            active_heal_40y = active_heal_40y + 1
+        end
+    end)
+
+
+
+    -- 团队有奶妈和坦克，需要把他们的攻击系数考虑进去，团队整体输出打75折
+
+    local pahn = active_heal_40y * 0.6
+
+
+
+    -- math.max，pahn不能低于自己一个人的输出系数
+
+    local loss = prmh * math.max(pahn, CDRS2)
+
+
+
+    -- 这个版本调整到了8秒干死同血量的怪
+
+    local gcd = Aurora.gcd() or 1.5
+
+    return math.min(math.max(health / loss * 6, gcd), 8888) -- 最大不能超过8888，最小不能低于GCD
+end
+
+
+
+-- 【新增】简化的TTD函数 - 用于常规冷却技能判断
 
 local function ShouldUseLongCooldown()
-    local ttdEnabled = Aurora.Config:Read("MiracleWarrior.ttd_enabled") or true
+    -- 从配置读取TTD设置
+
+    local ttdEnabled = Aurora.Config:Read("MiracleWarrior.ttd_enabled")
 
     local ttdThreshold = Aurora.Config:Read("MiracleWarrior.ttd_threshold") or 15
 
 
 
-    if not ttdEnabled then
+    -- 如果TTD判断被禁用，直接返回true
+
+    if ttdEnabled == false then
         return true
     end
 
 
 
-    if target and target.exists and target.alive then
-        local ttd = target.ttd or 999
+    -- 检查目标是否存在
 
-        if ttd < ttdThreshold then
+    if target and target.exists and target.alive then
+        -- 使用自定义TTD函数计算剩余时间
+
+        local targetTTD = UnitTimeToDie(target, 0) -- 计算到0%血量的时间
+
+
+
+        -- 如果TTD大于阈值，可以使用长冷却技能
+
+        if targetTTD > ttdThreshold then
+            return true
+        else
             return false
         end
     end
 
 
+
+    -- 没有目标时默认可以使用长冷却技能
 
     return true
 end
@@ -454,7 +554,7 @@ local function SmartTrinketUse()
 
         if trinket1Mode == "cd" then
             shouldUseTrinket1 = true
-        elseif trinket1Mode == "avatar" and player.aura(spells.avatar.spellId) then
+        elseif trinket1Mode == "avatar" and player.aura(107574) then
             shouldUseTrinket1 = true
         elseif trinket1Mode == "health" then
             local healthThreshold = Aurora.Config:Read("MiracleWarrior.trinket1_health_threshold") or 30
@@ -532,7 +632,7 @@ local function SmartTrinketUse()
 
         if trinket2Mode == "cd" then
             shouldUseTrinket2 = true
-        elseif trinket2Mode == "avatar" and player.aura(spells.avatar.spellId) then
+        elseif trinket2Mode == "avatar" and player.aura(107574) then
             shouldUseTrinket2 = true
         elseif trinket2Mode == "health" then
             local healthThreshold = Aurora.Config:Read("MiracleWarrior.trinket2_health_threshold") or 30
@@ -631,7 +731,7 @@ local function SmartPotionUse()
 
                     if burstPotionMode == "cd" then
                         shouldUse = true
-                    elseif burstPotionMode == "avatar" and player.aura(spells.avatar.spellId) then
+                    elseif burstPotionMode == "avatar" and player.aura(107574) then
                         shouldUse = true
                     end
 
@@ -952,19 +1052,27 @@ local function SmartSpellReflect()
     local reflectableSpells = {
 
         [473351] = true,
+
         [448787] = true,
+
         [465666] = true,
 
         [451119] = true,
+
         [473114] = true,
+
         [423015] = true,
 
         [469478] = true,
+
         [1222341] = true,
+
         [427001] = true,
 
         [466190] = true,
+
         [328791] = true,
+
         [167385] = true
 
     }
@@ -1012,15 +1120,7 @@ local function SmartHeroicThrow()
 
 
     if target.distanceto(player) > 8 and target.distanceto(player) <= 30 then
-        if target.casting and target.castinginterruptible then
-            return spells.heroic_throw:cast(target)
-        end
-
-
-
-        if target.hp < 10 then
-            return spells.heroic_throw:cast(target)
-        end
+        return spells.heroic_throw:cast(target)
     end
 
 
@@ -1192,12 +1292,18 @@ local function SmartDemoralizingShout()
     local enemyCount = player.enemiesaround(8) or 0
 
     if enemyCount >= 1 then
-        local success = spells.demoralizing_shout:cast(player)
+        if ShouldUseLongCooldown() then
+            spells.demoralizing_shout:cast(player)
 
-        if success and ShouldUseLongCooldown() then
             return true
         end
     end
+
+
+
+
+
+
 
 
 
@@ -1215,9 +1321,11 @@ local function SmartAvatar()
 
 
 
-    local success = spells.avatar:cast(player)
 
-    if success and ShouldUseLongCooldown() then
+
+    if ShouldUseLongCooldown() then
+        spells.avatar:cast(player)
+
         return true
     end
 
@@ -1235,9 +1343,9 @@ local function SmartRavager()
         return false
     end
 
-
-
-    return spells.Ravager:cast(player)
+    if ShouldUseLongCooldown() then
+        return spells.Ravager:cast(player)
+    end
 end
 
 
@@ -1577,6 +1685,8 @@ local function Dps()
     UpdateRagingBlowState()
 
 
+
+    print(UnitTimeToDie(target, 0), ShouldUseLongCooldown())
 
     -- 最高优先级：高危技能防御
 

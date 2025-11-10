@@ -326,6 +326,7 @@ local function CreateInterface()
             tooltip = T("aoe_threshold_tooltip")
         })
 
+    -- 在战斗设置标签中，只保留简单的TTD设置
         :Header({ text = T("ttd_settings") })
         :Checkbox({
             text = T("ttd_enabled"),
@@ -342,7 +343,6 @@ local function CreateInterface()
             default = 15,
             tooltip = T("ttd_threshold_tooltip")
         })
-
     -- 减伤设置
         :Tab(T("defensive"))
         :Header({ text = T("smart_defensive") })
