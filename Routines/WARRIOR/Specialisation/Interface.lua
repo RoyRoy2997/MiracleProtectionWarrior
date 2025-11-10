@@ -555,72 +555,75 @@ local function CreateInterface()
         })
 end
 
--- 状态栏集成
+-- MiracleWarrior 状态栏设置
 local function RegisterStatusToggles()
-    C_Timer.After(3, function()
-        local lang = GetLanguage()
-        local T = function(key) return L[lang][key] or key end
+    -- 直接使用Aurora的全局状态栏API
+    Aurora.Rotation.TauntToggle = Aurora:AddGlobalToggle({
+        label = "嘲讽",
+        var = "MiracleWarrior_Taunt",
+        icon = 355, -- 嘲讽图标
+        tooltip = "自动嘲讽攻击队友的敌人",
+        default = true
+    })
 
-        -- 确保使用正确的配置键名
-        Aurora.Rotation.TauntToggle = Aurora:AddGlobalToggle({
-            label = T("status_taunt"),
-            var = "MiracleWarrior.taunt.enabled",
-            icon = 355,
-            tooltip = T("taunt_tooltip")
-        })
+    Aurora.Rotation.DefensiveToggle = Aurora:AddGlobalToggle({
+        label = "减伤",
+        var = "MiracleWarrior_Defensive",
+        icon = 871, -- 盾墙图标
+        tooltip = "根据血量自动使用减伤技能",
+        default = true
+    })
 
-        Aurora.Rotation.DefensiveToggle = Aurora:AddGlobalToggle({
-            label = T("status_defensive"),
-            var = "MiracleWarrior.defensive.enabled",
-            icon = 871,
-            tooltip = T("defensive_enabled_tooltip")
-        })
+    Aurora.Rotation.SpellReflectToggle = Aurora:AddGlobalToggle({
+        label = "反射",
+        var = "MiracleWarrior_SpellReflect",
+        icon = 23920, -- 法术反射图标
+        tooltip = "自动使用法术反射",
+        default = true
+    })
 
-        Aurora.Rotation.SpellReflectToggle = Aurora:AddGlobalToggle({
-            label = T("status_reflect"),
-            var = "MiracleWarrior.spell_reflect.enabled",
-            icon = 23920,
-            tooltip = T("spell_reflect_tooltip")
-        })
+    Aurora.Rotation.VictoryRushToggle = Aurora:AddGlobalToggle({
+        label = "乘胜",
+        var = "MiracleWarrior_VictoryRush",
+        icon = 34428, -- 乘胜追击图标
+        tooltip = "自动使用乘胜追击进行治疗",
+        default = true
+    })
 
-        Aurora.Rotation.VictoryRushToggle = Aurora:AddGlobalToggle({
-            label = T("status_victory"),
-            var = "MiracleWarrior.victory_rush_enabled",
-            icon = 34428,
-            tooltip = T("victory_rush_tooltip")
-        })
+    Aurora.Rotation.RallyingCryToggle = Aurora:AddGlobalToggle({
+        label = "集结",
+        var = "MiracleWarrior_RallyingCry",
+        icon = 97462, -- 集结呐喊图标
+        tooltip = "自动使用集结呐喊保护团队",
+        default = true
+    })
 
-        Aurora.Rotation.RallyingCryToggle = Aurora:AddGlobalToggle({
-            label = T("status_rally"),
-            var = "MiracleWarrior.rallying_cry.enabled",
-            icon = 97462,
-            tooltip = T("rallying_cry_tooltip")
-        })
+    Aurora.Rotation.ShieldChargeToggle = Aurora:AddGlobalToggle({
+        label = "盾冲",
+        var = "MiracleWarrior_ShieldCharge",
+        icon = 385952, -- 盾牌冲锋图标
+        tooltip = "启用/禁用盾牌冲锋技能",
+        default = true
+    })
 
-        Aurora.Rotation.ShieldChargeToggle = Aurora:AddGlobalToggle({
-            label = T("status_charge"),
-            var = "MiracleWarrior.shield_charge_enabled",
-            icon = 385952,
-            tooltip = T("shield_charge_tooltip")
-        })
+    Aurora.Rotation.HardControlInterruptToggle = Aurora:AddGlobalToggle({
+        label = "硬控",
+        var = "MiracleWarrior_HardControl",
+        icon = 46968, -- 震荡波图标
+        tooltip = "使用硬控技能进行打断",
+        default = true
+    })
 
-        Aurora.Rotation.HardControlInterruptToggle = Aurora:AddGlobalToggle({
-            label = T("status_hardcontrol"),
-            var = "MiracleWarrior.hard_control_interrupt_enabled",
-            icon = 46968,
-            tooltip = T("hard_control_tooltip")
-        })
-
-        local loadedMsg = lang == "zh" and "MiracleWarrior 状态栏已加载!" or "MiracleWarrior status bar loaded!"
-        print(loadedMsg)
-    end)
+    print("MiracleWarrior 状态栏已加载!")
 end
 
 -- 创建界面
 CreateInterface()
 
--- 注册状态栏
-RegisterStatusToggles()
+-- 延迟注册状态栏
+C_Timer.After(2, function()
+    RegisterStatusToggles()
+end)
 
 local loadedMsg = GetLanguage() == "zh" and "MiracleWarrior 界面已加载!" or "MiracleWarrior interface loaded!"
 print(loadedMsg)

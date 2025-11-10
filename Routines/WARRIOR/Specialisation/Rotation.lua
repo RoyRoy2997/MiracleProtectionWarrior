@@ -1,572 +1,318 @@
--- Get commonly used units
+-- MiracleWarrior 主循环
 
 
+
+-- 获取常用单位
 
 local target = Aurora.UnitManager:Get("target")
-
-
 
 local player = Aurora.UnitManager:Get("player")
 
 
 
-
-
-
-
--- Get your spellbook
-
-
+-- 获取你的法术书
 
 local spells = Aurora.SpellHandler.Spellbooks.warrior["3"].MiracleWarrior.spells
 
-
-
 local auras = Aurora.SpellHandler.Spellbooks.warrior["3"].MiracleWarrior.auras
-
-
 
 local talents = Aurora.SpellHandler.Spellbooks.warrior["3"].MiracleWarrior.talents
 
 
 
-
-
-
-
 -- 版本信息
 
-
-
-local ROTATION_VERSION = "1.8.4"
-
-
-
-
+local ROTATION_VERSION = "2.0.0"
 
 
 
 -- 战斗数据统计
 
-
-
 local combatStats = {
-
-
 
     startTime = 0,
 
-
-
     totalDamage = 0,
-
-
 
     interrupts = 0,
 
-
-
     taunts = 0,
-
-
 
     reflects = 0,
 
-
-
     victoryRushes = 0,
-
-
 
     rallyingCries = 0,
 
-
-
     lastReset = 0
 
-
-
 }
-
-
-
-
 
 
 
 -- 技能使用冷却跟踪
 
-
-
 local skillCooldowns = {
-
-
 
     victory_rush = 0,
 
-
-
     last_stand = 0,
-
-
 
     shield_wall = 0,
 
-
-
     rallying_cry = 0,
-
-
 
     demoralizing_shout = 0,
 
-
-
     avatar = 0,
-
-
 
     battle_shout = 0
 
-
-
 }
-
-
-
-
-
-
-
--- Severe Thunder buff ID
-
-
-
-local SEVERE_THUNDER_BUFF = 1252096
-
-
-
-
 
 
 
 -- 药水物品
 
-
-
 local potions = {
-
-
 
     burst_3star = Aurora.ItemHandler.NewItem(212265), -- 淬火药水3星
 
-
-
     burst_2star = Aurora.ItemHandler.NewItem(212264), -- 淬火药水2星
-
-
 
     burst_1star = Aurora.ItemHandler.NewItem(212263), -- 淬火药水1星
 
+    heal_3star = Aurora.ItemHandler.NewItem(244839),  -- 焕生治疗药水3星
 
+    heal_2star = Aurora.ItemHandler.NewItem(244838),  -- 焕生治疗药水2星
 
-    heal_3star = Aurora.ItemHandler.NewItem(244839), -- 焕生治疗药水3星
-
-
-
-    heal_2star = Aurora.ItemHandler.NewItem(244838), -- 焕生治疗药水2星
-
-
-
-    heal_1star = Aurora.ItemHandler.NewItem(244835) -- 焕生治疗药水1星
-
-
+    heal_1star = Aurora.ItemHandler.NewItem(244835)   -- 焕生治疗药水1星
 
 }
-
-
-
-
 
 
 
 -- 饰品栏位定义
 
-
-
 local TRINKET_SLOTS = {
-
-
 
     TRINKET1 = 13,
 
-
-
     TRINKET2 = 14
 
-
-
 }
-
-
-
-
 
 
 
 -- 饰品使用冷却跟踪
 
-
-
 local trinketCooldowns = {
-
-
 
     trinket1 = 0,
 
-
-
     trinket2 = 0
-
-
 
 }
 
 
 
-
-
-
-
--- 只能对队友使用的饰品列表（需要根据实际情况更新）
-
-
+-- 只能对队友使用的饰品列表
 
 local teamOnlyTrinkets = {
 
-
-
     [12345] = true, -- 示例：治疗饰品1
-
-
 
     [12346] = true, -- 示例：治疗饰品2
 
-
-
-    -- 添加更多只能对队友使用的饰品ID
-
-
-
 }
-
-
-
-
 
 
 
 -- 盾牌格挡状态跟踪
 
-
-
 local shieldBlockTracker = {
-
-
 
     lastCastTime = 0,
 
-
-
     buffDuration = 6,
-
-
 
     shouldMaintain = true
 
-
-
 }
-
-
-
-
 
 
 
 -- 怒意迸发状态跟踪
 
-
-
 local lastRage = 0
 
-
-
 local rageConsumed = 0
-
-
 
 local ragingBlowReady = false
 
 
 
-
-
-
-
 -- 高危技能列表
-
-
 
 local highRiskSpells = {
 
-
-
     -- 高危物理技能 - 使用盾墙
-
-
 
     physical = {
 
-
-
         [1219482] = "裂隙利爪",
-
-
 
         [1235368] = "奥术猛袭",
 
-
-
         [1222341] = "幽暗之咬",
-
-
 
         [1237071] = "石拳",
 
-
-
         [1235766] = "致死打击",
-
-
 
         [322936] = "粉碎砸击",
 
-
-
         [352796] = "代理打击",
-
-
 
         [354297] = "凌光箭",
 
-
-
         [330586] = "吞噬血肉",
-
-
 
         [323515] = "仇恨打击",
 
-
-
         [324079] = "收割之镰",
-
-
 
         [469478] = "淤泥之爪",
 
-
-
         [465666] = "火花猛击",
-
-
 
         [448485] = "盾牌猛击",
 
-
-
         [448515] = "神圣审判",
-
-
 
         [349934] = "狂热鞭笞协议",
 
-
-
         [355477] = "强力脚踢",
-
-
 
         [355830] = "迅斩",
 
-
-
         [347716] = "开信刀",
-
-
 
         [473351] = "电气重碾",
 
-
-
         [459799] = "重击",
-
-
 
         [431491] = "污邪斩击",
 
-
-
         [438471] = "贪食撕咬",
-
-
 
         [433002] = "深掘打击",
 
-
-
         [1240912] = "穿刺",
-
-
 
         [350916] = "安保猛击",
 
-
-
         [359028] = "安保猛击",
-
-
 
         [346116] = "剪切挥舞",
 
-
-
         [355048] = "破壳猛击",
 
-
-
         [167385] = "强力猛击",
-
-
 
     },
 
 
 
-
-
-
-
     -- 高危法术技能 - 使用法术反射
-
-
 
     magical = {
 
-
-
-        [473351] = "电气重碾", -- 电气重碾
-
-
+        [473351] = "电气重碾",
 
         [448787] = "纯净",
 
-
-
         [465666] = "火花猛击",
-
-
 
         [451119] = "深渊轰击",
 
-
-
         [473114] = "泥石流",
-
-
 
         [423015] = "遣罚者之盾",
 
-
-
         [469478] = "淤泥之爪",
-
-
 
         [1222341] = "幽暗之咬",
 
-
-
         [427001] = "恐惧猛击",
-
-
 
         [466190] = "雷霆重拳",
 
-
-
         [328791] = "哀伤仪式",
-
-
 
         [167385] = "强力猛击",
 
-
-
     }
-
-
 
 }
 
 
 
+-- 【核心修复】直接的状态栏检查函数
 
+local function IsToggleEnabled(toggleName)
+    if not Aurora.Rotation[toggleName] then
+        return true -- 如果状态栏未加载，默认启用
+    end
+
+    return Aurora.Rotation[toggleName]:GetValue()
+end
+
+
+
+-- 【核心修复】简化的配置获取 - 直接从状态栏读取
+
+local function GetToggleState()
+    return {
+
+        tauntEnabled = IsToggleEnabled("TauntToggle"),
+
+        defensiveEnabled = IsToggleEnabled("DefensiveToggle"),
+
+        spellReflectEnabled = IsToggleEnabled("SpellReflectToggle"),
+
+        victoryRushEnabled = IsToggleEnabled("VictoryRushToggle"),
+
+        rallyingCryEnabled = IsToggleEnabled("RallyingCryToggle"),
+
+        shieldChargeEnabled = IsToggleEnabled("ShieldChargeToggle"),
+
+        hardControlInterruptEnabled = IsToggleEnabled("HardControlInterruptToggle")
+
+    }
+end
 
 
 
 -- 检查循环版本更新
-
-
 
 local function CheckRotationVersion()
     local lastRotationVersion = Aurora.Config:Read("MiracleWarrior.rotation_version") or "0"
 
 
 
-
-
-
-
     if lastRotationVersion ~= ROTATION_VERSION then
         print("=== MiracleWarrior 循环已更新 ===")
 
-
-
         print("版本: " .. ROTATION_VERSION)
 
+        print("• 完全重写状态栏控制")
 
+        print("• 简化配置读取逻辑")
 
-        print("• 重构打断系统，严格遵循Aurora框架")
-
-
-
-        print("• 分离拳击和硬控打断，独立开关控制")
-
-
-
-        print("• 修复饰品卡循环问题")
-
-
-
-        print("• 优化性能，避免频繁API调用")
-
-
+        print("• 添加宏命令控制")
 
         print("================================")
-
-
 
         Aurora.Config:Write("MiracleWarrior.rotation_version", ROTATION_VERSION)
     end
@@ -574,175 +320,7 @@ end
 
 
 
-
-
-
-
--- 从配置读取设置
-
-
-
-local function GetConfig()
-    return {
-
-
-
-        -- 基础设置
-
-
-
-        tauntEnabled = Aurora.Config:Read("MiracleWarrior.taunt.enabled") or true,
-
-
-
-        spellReflectEnabled = Aurora.Config:Read("MiracleWarrior.spell_reflect.enabled") or true,
-
-
-
-        ttdEnabled = Aurora.Config:Read("MiracleWarrior.ttd_enabled") or true,
-
-
-
-        ttdThreshold = Aurora.Config:Read("MiracleWarrior.ttd_threshold") or 15,
-
-
-
-        defensiveEnabled = Aurora.Config:Read("MiracleWarrior.defensive.enabled") or true,
-
-
-
-        victoryRushEnabled = Aurora.Config:Read("MiracleWarrior.victory_rush_enabled") or true,
-
-
-
-        rallyingCryEnabled = Aurora.Config:Read("MiracleWarrior.rallying_cry.enabled") or true,
-
-
-
-        rageThreshold = Aurora.Config:Read("MiracleWarrior.rage_threshold") or 60,
-
-
-
-        aoeThreshold = Aurora.Config:Read("MiracleWarrior.aoe_threshold") or 3,
-
-
-
-        victoryRushHealth = Aurora.Config:Read("MiracleWarrior.victory_rush_health") or 60,
-
-
-
-        rallyingCryHealth = Aurora.Config:Read("MiracleWarrior.rallying_cry_health") or 50,
-
-
-
-        shieldWallHealth = Aurora.Config:Read("MiracleWarrior.shield_wall_health") or 70,
-
-
-
-        lastStandHealth = Aurora.Config:Read("MiracleWarrior.last_stand_health") or 40,
-
-
-
-
-
-
-
-        -- 打断设置
-
-
-
-        interruptEnabled = Aurora.Config:Read("MiracleWarrior.interrupt_enabled") or true,
-
-
-
-        hardControlInterruptEnabled = Aurora.Config:Read("MiracleWarrior.hard_control_interrupt_enabled") or true,
-
-
-
-        randomInterrupt = Aurora.Config:Read("MiracleWarrior.random_interrupt") or true,
-
-
-
-        minInterruptDelay = Aurora.Config:Read("MiracleWarrior.min_interrupt_delay") or 0,
-
-
-
-        maxInterruptDelay = Aurora.Config:Read("MiracleWarrior.max_interrupt_delay") or 0.5,
-
-
-
-        interruptCastPercent = Aurora.Config:Read("MiracleWarrior.interrupt_cast_percent") or 50,
-
-
-
-
-
-
-
-        -- 功能设置
-
-
-
-        battleShoutEnabled = Aurora.Config:Read("MiracleWarrior.battle_shout_enabled") or true,
-
-
-
-        burstPotionMode = Aurora.Config:Read("MiracleWarrior.burst_potion_mode") or "cd",
-
-
-
-        healPotionHealth = Aurora.Config:Read("MiracleWarrior.heal_potion_health") or 30,
-
-
-
-        shieldChargeEnabled = Aurora.Config:Read("MiracleWarrior.shield_charge_enabled") or true,
-
-
-
-
-
-
-
-        -- 饰品设置
-
-
-
-        trinket1Mode = Aurora.Config:Read("MiracleWarrior.trinket1_mode") or "cd",
-
-
-
-        trinket1HealthThreshold = Aurora.Config:Read("MiracleWarrior.trinket1_health_threshold") or 30,
-
-
-
-        trinket2Mode = Aurora.Config:Read("MiracleWarrior.trinket2_mode") or "cd",
-
-
-
-        trinket2HealthThreshold = Aurora.Config:Read("MiracleWarrior.trinket2_health_threshold") or 30,
-
-
-
-        overpowerWait = Aurora.Config:Read("MiracleWarrior.overpower_wait") or 80,
-
-
-
-        thunderPriority = Aurora.Config:Read("MiracleWarrior.thunder_priority") or "medium"
-
-
-
-    }
-end
-
-
-
-
-
-
-
 -- 检查技能冷却
-
-
 
 local function IsSkillOnCooldown(skillName)
     return skillCooldowns[skillName] and GetTime() < skillCooldowns[skillName]
@@ -750,13 +328,7 @@ end
 
 
 
-
-
-
-
 -- 设置技能冷却
-
-
 
 local function SetSkillCooldown(skillName, duration)
     skillCooldowns[skillName] = GetTime() + duration
@@ -764,42 +336,28 @@ end
 
 
 
-
-
-
-
 -- TTD时间判断
 
-
-
 local function ShouldUseLongCooldown()
-    local config = GetConfig()
+    local ttdEnabled = Aurora.Config:Read("MiracleWarrior.ttd_enabled") or true
+
+    local ttdThreshold = Aurora.Config:Read("MiracleWarrior.ttd_threshold") or 15
 
 
 
-    if not config.ttdEnabled then
+    if not ttdEnabled then
         return true
     end
 
 
 
-
-
-
-
     if target and target.exists and target.alive then
-        local ttd = target.rawttd or 999
+        local ttd = target.ttd or 999
 
-
-
-        if ttd < config.ttdThreshold then
+        if ttd < ttdThreshold then
             return false
         end
     end
-
-
-
-
 
 
 
@@ -808,42 +366,14 @@ end
 
 
 
-
-
-
-
--- 【修正】怒意迸发状态跟踪 - 100层=100%
-
-
-
--- 【重构】怒意迸发状态跟踪 - 使用直接ID检查
+-- 【完全重写】怒意迸发状态跟踪
 
 local function GetOverpowerState()
-    -- 直接使用ID检查，不通过spellbook
+    local overpowerStacks = player.auracount(386486) or 0
 
-    local overpowerStacks = player.auracount(386486) or 0 -- 怒意迸发层数ID
+    local hasOverpowerBuff = player.aura(386478) or false
 
-    local hasOverpowerBuff = player.aura(386478) or false -- 怒意迸发buff ID
-
-
-
-    -- 修正：100层代表100%，计算百分比
-
-    local overpowerProgress = (overpowerStacks / 100) * 100
-
-
-
-    local config = GetConfig()
-
-    local waitThreshold = config.overpowerWait or 80 -- 默认80%等待
-
-
-
-    -- 简化逻辑，避免复杂的等待条件
-
-    local thunderBlastCD = spells.thunder_blast and spells.thunder_blast:getcd() or 999
-
-    local shouldWaitForThunder = hasOverpowerBuff and thunderBlastCD <= 2
+    local progress = (overpowerStacks / 100) * 100
 
 
 
@@ -851,31 +381,21 @@ local function GetOverpowerState()
 
         stacks = overpowerStacks,
 
-        progress = overpowerProgress, -- 现在是正确的百分比
+        progress = progress,
 
         hasBuff = hasOverpowerBuff,
 
-        isReady = hasOverpowerBuff,                     -- 有buff就是就绪状态
-
-        nearReady = overpowerProgress >= waitThreshold, -- 使用配置的等待阈值
-
-        shouldWaitForThunder = shouldWaitForThunder
+        isReady = hasOverpowerBuff
 
     }
 end
 
 
 
-
-
 -- 更新怒意迸发状态
-
-
 
 local function UpdateRagingBlowState()
     local currentRage = player.rage or 0
-
-
 
     if lastRage > 0 then
         local rageUsed = lastRage - currentRage
@@ -890,8 +410,6 @@ local function UpdateRagingBlowState()
             if rageConsumed >= 250 then
                 ragingBlowReady = true
 
-
-
                 rageConsumed = 0
             end
         end
@@ -899,22 +417,12 @@ local function UpdateRagingBlowState()
 
 
 
-
-
-
-
     lastRage = currentRage
-
-
-
-
 
 
 
     if ragingBlowReady then
         if (spells.thunder_clap and spells.thunder_clap:waslastcast(2)) or
-
-
 
             (spells.shield_slam and spells.shield_slam:waslastcast(2)) then
             ragingBlowReady = false
@@ -924,110 +432,58 @@ end
 
 
 
-
-
-
-
--- 【修复】智能饰品使用 - 避免卡循环
-
-
+-- 智能饰品使用
 
 local function SmartTrinketUse()
-    local config = GetConfig()
+    local trinket1Mode = Aurora.Config:Read("MiracleWarrior.trinket1_mode") or "cd"
 
-
+    local trinket2Mode = Aurora.Config:Read("MiracleWarrior.trinket2_mode") or "cd"
 
     local currentTime = GetTime()
-
-
 
     local usedTrinket = false
 
 
 
-
-
-
-
     -- 饰品1逻辑
 
-
-
-    if config.trinket1Mode ~= "none" and currentTime > trinketCooldowns.trinket1 then
+    if trinket1Mode ~= "none" and currentTime > trinketCooldowns.trinket1 then
         local shouldUseTrinket1 = false
 
 
 
-
-
-
-
-        -- 检查使用条件
-
-
-
-        if config.trinket1Mode == "cd" then
+        if trinket1Mode == "cd" then
             shouldUseTrinket1 = true
-        elseif config.trinket1Mode == "avatar" and player.aura(spells.avatar.spellId) then
+        elseif trinket1Mode == "avatar" and player.aura(spells.avatar.spellId) then
             shouldUseTrinket1 = true
-        elseif config.trinket1Mode == "health" and player.hp < config.trinket1HealthThreshold then
-            shouldUseTrinket1 = true
+        elseif trinket1Mode == "health" then
+            local healthThreshold = Aurora.Config:Read("MiracleWarrior.trinket1_health_threshold") or 30
+
+            if player.hp < healthThreshold then
+                shouldUseTrinket1 = true
+            end
         end
-
-
-
-
 
 
 
         if shouldUseTrinket1 then
             local itemID = GetInventoryItemID("player", TRINKET_SLOTS.TRINKET1)
 
-
-
             if itemID and itemID > 0 then
                 local trinket = Aurora.ItemHandler.NewItem(itemID)
 
-
-
-
-
-
-
-                -- 检查饰品是否可用
-
-
-
                 if trinket and trinket:ready() then
-                    -- 对于只能对队友使用的饰品，检查是否有队友需要
-
-
-
                     if teamOnlyTrinkets[itemID] then
                         if player.group or player.raid then
-                            -- 检查是否有队友血量低于阈值
-
-
-
                             local teammateNeedsHeal = false
-
-
-
-
-
-
 
                             if player.raid then
                                 for i = 1, GetNumGroupMembers() do
                                     local unit = Aurora.UnitManager:Get("raid" .. i)
 
-
-
                                     if unit and unit.exists and unit.alive and unit.distanceto(player) <= 40 then
-                                        if unit.hp < 80 then -- 队友血量低于80%
+                                        if unit.hp < 80 then
                                             teammateNeedsHeal = true
-
-
 
                                             break
                                         end
@@ -1037,153 +493,15 @@ local function SmartTrinketUse()
                                 for i = 1, GetNumGroupMembers() do
                                     local unit = Aurora.UnitManager:Get("party" .. i)
 
-
-
                                     if unit and unit.exists and unit.alive and unit.distanceto(player) <= 40 then
                                         if unit.hp < 80 then
                                             teammateNeedsHeal = true
-
-
 
                                             break
                                         end
                                     end
                                 end
                             end
-
-
-
-
-
-
-
-                            if teammateNeedsHeal then
-                                usedTrinket = trinket:use(player) -- 对自身使用，效果作用于队友
-                            end
-                        end
-                    else
-                        -- 普通饰品，直接对自身使用
-
-
-
-                        usedTrinket = trinket:use(player)
-                    end
-
-
-
-
-
-
-
-                    -- 无论使用成功与否，都设置冷却时间避免卡循环
-
-
-
-                    trinketCooldowns.trinket1 = currentTime + 2
-                end
-            end
-        end
-    end
-
-
-
-
-
-
-
-    -- 饰品2逻辑
-
-
-
-    if not usedTrinket and config.trinket2Mode ~= "none" and currentTime > trinketCooldowns.trinket2 then
-        local shouldUseTrinket2 = false
-
-
-
-
-
-
-
-        if config.trinket2Mode == "cd" then
-            shouldUseTrinket2 = true
-        elseif config.trinket2Mode == "avatar" and player.aura(107574) then
-            shouldUseTrinket2 = true
-        elseif config.trinket2Mode == "health" and player.hp < config.trinket2HealthThreshold then
-            shouldUseTrinket2 = true
-        end
-
-
-
-
-
-
-
-        if shouldUseTrinket2 then
-            local itemID = GetInventoryItemID("player", TRINKET_SLOTS.TRINKET2)
-
-
-
-            if itemID and itemID > 0 then
-                local trinket = Aurora.ItemHandler.NewItem(itemID)
-
-
-
-
-
-
-
-                if trinket and trinket:ready() then
-                    -- 对于只能对队友使用的饰品，检查是否有队友需要
-
-
-
-                    if teamOnlyTrinkets[itemID] then
-                        if player.group or player.raid then
-                            local teammateNeedsHeal = false
-
-
-
-
-
-
-
-                            if player.raid then
-                                for i = 1, GetNumGroupMembers() do
-                                    local unit = Aurora.UnitManager:Get("raid" .. i)
-
-
-
-                                    if unit and unit.exists and unit.alive and unit.distanceto(player) <= 40 then
-                                        if unit.hp < 80 then
-                                            teammateNeedsHeal = true
-
-
-
-                                            break
-                                        end
-                                    end
-                                end
-                            elseif player.group then
-                                for i = 1, GetNumGroupMembers() do
-                                    local unit = Aurora.UnitManager:Get("party" .. i)
-
-
-
-                                    if unit and unit.exists and unit.alive and unit.distanceto(player) <= 40 then
-                                        if unit.hp < 80 then
-                                            teammateNeedsHeal = true
-
-
-
-                                            break
-                                        end
-                                    end
-                                end
-                            end
-
-
-
-
 
 
 
@@ -1197,7 +515,81 @@ local function SmartTrinketUse()
 
 
 
+                    trinketCooldowns.trinket1 = currentTime + 2
+                end
+            end
+        end
+    end
 
+
+
+    -- 饰品2逻辑
+
+    if not usedTrinket and trinket2Mode ~= "none" and currentTime > trinketCooldowns.trinket2 then
+        local shouldUseTrinket2 = false
+
+
+
+        if trinket2Mode == "cd" then
+            shouldUseTrinket2 = true
+        elseif trinket2Mode == "avatar" and player.aura(spells.avatar.spellId) then
+            shouldUseTrinket2 = true
+        elseif trinket2Mode == "health" then
+            local healthThreshold = Aurora.Config:Read("MiracleWarrior.trinket2_health_threshold") or 30
+
+            if player.hp < healthThreshold then
+                shouldUseTrinket2 = true
+            end
+        end
+
+
+
+        if shouldUseTrinket2 then
+            local itemID = GetInventoryItemID("player", TRINKET_SLOTS.TRINKET2)
+
+            if itemID and itemID > 0 then
+                local trinket = Aurora.ItemHandler.NewItem(itemID)
+
+                if trinket and trinket:ready() then
+                    if teamOnlyTrinkets[itemID] then
+                        if player.group or player.raid then
+                            local teammateNeedsHeal = false
+
+                            if player.raid then
+                                for i = 1, GetNumGroupMembers() do
+                                    local unit = Aurora.UnitManager:Get("raid" .. i)
+
+                                    if unit and unit.exists and unit.alive and unit.distanceto(player) <= 40 then
+                                        if unit.hp < 80 then
+                                            teammateNeedsHeal = true
+
+                                            break
+                                        end
+                                    end
+                                end
+                            elseif player.group then
+                                for i = 1, GetNumGroupMembers() do
+                                    local unit = Aurora.UnitManager:Get("party" .. i)
+
+                                    if unit and unit.exists and unit.alive and unit.distanceto(player) <= 40 then
+                                        if unit.hp < 80 then
+                                            teammateNeedsHeal = true
+
+                                            break
+                                        end
+                                    end
+                                end
+                            end
+
+
+
+                            if teammateNeedsHeal then
+                                usedTrinket = trinket:use(player)
+                            end
+                        end
+                    else
+                        usedTrinket = trinket:use(player)
+                    end
 
 
 
@@ -1209,84 +601,44 @@ local function SmartTrinketUse()
 
 
 
-
-
-
-
     return usedTrinket
 end
 
 
 
-
-
-
-
--- 【完全重写】智能药水使用逻辑 - 简化版本
-
-
+-- 智能药水使用逻辑
 
 local function SmartPotionUse()
-    local config = GetConfig()
+    local burstPotionMode = Aurora.Config:Read("MiracleWarrior.burst_potion_mode") or "cd"
+
+    local healPotionHealth = Aurora.Config:Read("MiracleWarrior.heal_potion_health") or 30
 
 
 
+    -- 检查爆发药水
 
-
-
-
-    -- 检查爆发药水 - 卡CD使用
-
-
-
-    if config.burstPotionMode ~= "none" then
-        -- 按星级顺序检查药水
-
-
-
+    if burstPotionMode ~= "none" then
         local burstPotions = { potions.burst_3star, potions.burst_2star, potions.burst_1star }
-
-
-
-
 
 
 
         for _, potion in ipairs(burstPotions) do
             if potion then
-                -- 直接检查药水是否可用
-
-
-
                 if potion:ready() and potion:usable(player) then
                     local shouldUse = false
 
 
 
-
-
-
-
-                    if config.burstPotionMode == "cd" then
+                    if burstPotionMode == "cd" then
+                        shouldUse = true
+                    elseif burstPotionMode == "avatar" and player.aura(spells.avatar.spellId) then
                         shouldUse = true
                     end
-
-
-
-                    if config.burstPotionMode == "avatar" and player.aura(107574) then
-                        shouldUse = true
-                    end
-
-
-
-
 
 
 
                     if shouldUse then
                         local success = potion:use(player)
-
-
 
                         if success then
                             return true
@@ -1299,20 +651,10 @@ local function SmartPotionUse()
 
 
 
+    -- 检查治疗药水
 
-
-
-
-    -- 检查治疗药水 - 血量阈值使用
-
-
-
-    if player.hp < config.healPotionHealth then
+    if player.hp < healPotionHealth then
         local healPotions = { potions.heal_3star, potions.heal_2star, potions.heal_1star }
-
-
-
-
 
 
 
@@ -1320,8 +662,6 @@ local function SmartPotionUse()
             if potion then
                 if potion:ready() and potion:usable(player) then
                     local success = potion:use(player)
-
-
 
                     if success then
                         return true
@@ -1333,51 +673,27 @@ local function SmartPotionUse()
 
 
 
-
-
-
-
     return false
 end
-
-
-
-
 
 
 
 -- 打断状态跟踪表
 
-
-
 local interruptTracker = {}
-
-
 
 local lastInterruptTime = 0
 
 
 
-
-
-
-
--- 【重构】智能打断系统 - 严格遵循Aurora框架
-
-
+-- 智能打断系统
 
 local function SmartInterrupts()
-    local config = GetConfig()
+    local interruptEnabled = Aurora.Config:Read("MiracleWarrior.interrupt_enabled") or true
 
-
-
-    if not config.interruptEnabled then
+    if not interruptEnabled then
         return false
     end
-
-
-
-
 
 
 
@@ -1385,13 +701,7 @@ local function SmartInterrupts()
 
 
 
-
-
-
-
     -- 防止连续打断
-
-
 
     if currentTime - lastInterruptTime < 1 then
         return false
@@ -1399,95 +709,51 @@ local function SmartInterrupts()
 
 
 
-
-
-
-
     -- 使用Aurora框架维护的打断列表
-
-
 
     local interruptList = Aurora.Lists.InterruptSpells or {}
 
 
 
-
-
-
-
     -- 检查焦点目标
 
-
-
     local focusTarget = Aurora.UnitManager:Get("focus")
-
-
 
     if focusTarget and focusTarget.exists and focusTarget.casting and focusTarget.castinginterruptible then
         local castId = focusTarget.castingspellid
 
-
-
         if interruptList[castId] then
-            -- 优先使用拳击打断
-
-
-
             if spells.pummel and spells.pummel:ready() and spells.pummel:castable(focusTarget) then
                 if spells.pummel:cast(focusTarget) then
                     lastInterruptTime = currentTime
 
-
-
                     combatStats.interrupts = combatStats.interrupts + 1
-
-
 
                     return true
                 end
             end
         end
     end
-
-
-
-
 
 
 
     -- 检查当前目标
 
-
-
     if target and target.exists and target.casting and target.castinginterruptible then
         local castId = target.castingspellid
 
-
-
         if interruptList[castId] then
-            -- 优先使用拳击打断
-
-
-
             if spells.pummel and spells.pummel:ready() and spells.pummel:castable(target) then
                 if spells.pummel:cast(target) then
                     lastInterruptTime = currentTime
 
-
-
                     combatStats.interrupts = combatStats.interrupts + 1
-
-
 
                     return true
                 end
             end
         end
     end
-
-
-
-
 
 
 
@@ -1496,26 +762,14 @@ end
 
 
 
-
-
-
-
--- 【重构】硬控打断系统 - 单独的开关控制
-
-
+-- 【强制检查】硬控打断系统 - 直接使用状态栏控制
 
 local function HardControlInterrupts()
-    local config = GetConfig()
+    local toggles = GetToggleState()
 
-
-
-    if not config.hardControlInterruptEnabled then
+    if not toggles.hardControlInterruptEnabled then
         return false
     end
-
-
-
-
 
 
 
@@ -1523,13 +777,7 @@ local function HardControlInterrupts()
 
 
 
-
-
-
-
     -- 防止连续打断
-
-
 
     if currentTime - lastInterruptTime < 1 then
         return false
@@ -1537,35 +785,17 @@ local function HardControlInterrupts()
 
 
 
-
-
-
-
-    -- 使用Aurora框架维护的打断列表
-
-
-
     local interruptList = Aurora.Lists.InterruptSpells or {}
-
-
 
     local enemiesCastingDangerous = {}
 
 
 
-
-
-
-
     -- 收集附近正在施放危险技能的敌人
-
-
 
     Aurora.enemies:within(15):each(function(enemy)
         if enemy.exists and enemy.casting and enemy.castinginterruptible and enemy.combat then
             local castId = enemy.castingspellid
-
-
 
             if interruptList[castId] then
                 table.insert(enemiesCastingDangerous, enemy)
@@ -1575,103 +805,41 @@ local function HardControlInterrupts()
 
 
 
-
-
-
-
     if #enemiesCastingDangerous >= 1 then
         -- 优先使用震荡波（群体硬控）
-
-
 
         if spells.shockwave and spells.shockwave:ready() and spells.shockwave:castable(player) then
             local success = spells.shockwave:cast(player)
 
-
-
             if success then
                 lastInterruptTime = currentTime
 
-
-
                 combatStats.interrupts = combatStats.interrupts + 1
-
-
 
                 return true
             end
         end
-
-
-
-
 
 
 
         -- 其次使用风暴之锤（单体硬控）
 
-
-
         if spells.storm_bolt and spells.storm_bolt:ready() then
-            -- 对第一个危险敌人使用风暴之锤
-
-
-
             local firstDangerousEnemy = enemiesCastingDangerous[1]
-
-
 
             if firstDangerousEnemy and spells.storm_bolt:castable(firstDangerousEnemy) then
                 local success = spells.storm_bolt:cast(firstDangerousEnemy)
 
-
-
                 if success then
                     lastInterruptTime = currentTime
 
-
-
                     combatStats.interrupts = combatStats.interrupts + 1
-
-
 
                     return true
                 end
             end
         end
-
-
-
-
-
-
-
-        -- 最后使用挑战怒吼（群体硬控）
-
-
-
-        if spells.challenging_shout and spells.challenging_shout:ready() and spells.challenging_shout:castable(player) then
-            local success = spells.challenging_shout:cast(player)
-
-
-
-            if success then
-                lastInterruptTime = currentTime
-
-
-
-                combatStats.interrupts = combatStats.interrupts + 1
-
-
-
-                return true
-            end
-        end
     end
-
-
-
-
 
 
 
@@ -1680,18 +848,10 @@ end
 
 
 
-
-
-
-
--- 【重构】整合打断系统
-
-
+-- 整合打断系统
 
 local function Interrupts()
     -- 先尝试普通打断（拳击）
-
-
 
     if SmartInterrupts() then
         return true
@@ -1699,21 +859,11 @@ local function Interrupts()
 
 
 
-
-
-
-
     -- 再尝试硬控打断
-
-
 
     if HardControlInterrupts() then
         return true
     end
-
-
-
-
 
 
 
@@ -1722,40 +872,18 @@ end
 
 
 
-
-
-
-
--- 【新增】高危技能预警和减伤
-
-
+-- 高危技能预警和减伤
 
 local function HighRiskSpellDefense()
-    local config = GetConfig()
+    local toggles = GetToggleState()
 
-
-
-    if not config.defensiveEnabled then
+    if not toggles.defensiveEnabled then
         return false
     end
 
 
 
-
-
-
-
-    local language = Aurora.Config:Read("MiracleWarrior.general.language") or "zh"
-
-
-
-
-
-
-
     -- 检查附近战斗中敌人
-
-
 
     Aurora.enemies:within(30):each(function(enemy)
         if enemy.exists and enemy.casting and enemy.combat then
@@ -1763,48 +891,16 @@ local function HighRiskSpellDefense()
 
 
 
-
-
-
-
             -- 检查是否目标是我
-
-
 
             if enemy.target and enemy.target.guid == player.guid then
                 -- 高危物理技能 - 使用盾墙
 
-
-
                 if highRiskSpells.physical[castId] then
                     if spells.shield_wall and spells.shield_wall:ready() and spells.shield_wall:castable(player) then
-                        -- 显示预警提示
-
-
-
                         local spellName = highRiskSpells.physical[castId] or "Unknown"
 
-
-
-                        local message = language == "zh" and
-
-
-
-                            "高危物理技能: " .. spellName .. "!" or
-
-
-
-                            "High Risk Physical: " .. spellName .. "!"
-
-
-
-
-
-
-
-                        Aurora.alert(message, 871) -- 盾墙图标
-
-
+                        Aurora.alert("高危物理技能: " .. spellName .. "!", 871)
 
                         return spells.shield_wall:cast(player)
                     end
@@ -1812,43 +908,13 @@ local function HighRiskSpellDefense()
 
 
 
-
-
-
-
                 -- 高危法术技能 - 使用法术反射
-
-
 
                 if highRiskSpells.magical[castId] then
                     if spells.spell_reflect and spells.spell_reflect:ready() and spells.spell_reflect:castable(player) then
-                        -- 显示预警提示
-
-
-
                         local spellName = highRiskSpells.magical[castId] or "Unknown"
 
-
-
-                        local message = language == "zh" and
-
-
-
-                            "高危法术技能: " .. spellName .. "!" or
-
-
-
-                            "High Risk Magical: " .. spellName .. "!"
-
-
-
-
-
-
-
-                        Aurora.alert(message, 23920) -- 法术反射图标
-
-
+                        Aurora.alert("高危法术技能: " .. spellName .. "!", 23920)
 
                         return spells.spell_reflect:cast(player)
                     end
@@ -1859,103 +925,49 @@ local function HighRiskSpellDefense()
 
 
 
-
-
-
-
     return false
 end
 
 
 
-
-
-
-
--- 智能法术反射
-
-
+-- 【强制检查】智能法术反射 - 直接使用状态栏控制
 
 local function SmartSpellReflect()
-    local config = GetConfig()
+    local toggles = GetToggleState()
 
-
-
-    if not config.spellReflectEnabled or not spells.spell_reflect or not spells.spell_reflect:ready() then
+    if not toggles.spellReflectEnabled then
         return false
     end
 
 
 
-
+    if not spells.spell_reflect or not spells.spell_reflect:ready() then
+        return false
+    end
 
 
 
     local shouldReflect = false
 
-
-
     local reflectableSpells = {
 
+        [473351] = true,
+        [448787] = true,
+        [465666] = true,
 
+        [451119] = true,
+        [473114] = true,
+        [423015] = true,
 
-        [473351] = "电气重碾", -- 电气重碾
+        [469478] = true,
+        [1222341] = true,
+        [427001] = true,
 
-
-
-        [448787] = "纯净",
-
-
-
-        [465666] = "火花猛击",
-
-
-
-        [451119] = "深渊轰击",
-
-
-
-        [473114] = "泥石流",
-
-
-
-        [423015] = "遣罚者之盾",
-
-
-
-        [469478] = "淤泥之爪",
-
-
-
-        [1222341] = "幽暗之咬",
-
-
-
-        [427001] = "恐惧猛击",
-
-
-
-        [466190] = "雷霆重拳",
-
-
-
-        [328791] = "哀伤仪式",
-
-
-
-        [167385] = "强力猛击",
-
-
-
-
-
-
+        [466190] = true,
+        [328791] = true,
+        [167385] = true
 
     }
-
-
-
-
 
 
 
@@ -1963,12 +975,8 @@ local function SmartSpellReflect()
         if enemy.casting and enemy.castinginterruptible then
             local castId = enemy.castingspellid
 
-
-
             if reflectableSpells[castId] then
                 shouldReflect = true
-
-
 
                 return true
             end
@@ -1977,27 +985,15 @@ local function SmartSpellReflect()
 
 
 
-
-
-
-
     if shouldReflect then
         local success = spells.spell_reflect:cast(player)
-
-
 
         if success then
             combatStats.reflects = combatStats.reflects + 1
         end
 
-
-
         return success
     end
-
-
-
-
 
 
 
@@ -2006,22 +1002,12 @@ end
 
 
 
-
-
-
-
 -- 智能英勇投掷
-
-
 
 local function SmartHeroicThrow()
     if not spells.heroic_throw or not spells.heroic_throw:ready() then
         return false
     end
-
-
-
-
 
 
 
@@ -2032,10 +1018,6 @@ local function SmartHeroicThrow()
 
 
 
-
-
-
-
         if target.hp < 10 then
             return spells.heroic_throw:cast(target)
         end
@@ -2043,47 +1025,37 @@ local function SmartHeroicThrow()
 
 
 
-
-
-
-
     return false
 end
 
 
 
-
-
-
-
--- 智能乘胜追击
-
-
+-- 【强制检查】智能乘胜追击 - 直接使用状态栏控制
 
 local function SmartVictoryRush()
-    local config = GetConfig()
+    local toggles = GetToggleState()
 
-
-
-    if not config.victoryRushEnabled or not spells.victory_rush or not spells.victory_rush:ready() then
+    if not toggles.victoryRushEnabled then
         return false
     end
 
 
 
+    if not spells.victory_rush or not spells.victory_rush:ready() then
+        return false
+    end
 
 
 
+    local victoryRushHealth = Aurora.Config:Read("MiracleWarrior.victory_rush_health") or 60
 
-    if player.hp < config.victoryRushHealth then
+
+
+    if player.hp < victoryRushHealth then
         local success = spells.victory_rush:cast(target)
-
-
 
         if success then
             combatStats.victoryRushes = combatStats.victoryRushes + 1
-
-
 
             return true
         end
@@ -2091,45 +1063,31 @@ local function SmartVictoryRush()
 
 
 
-
-
-
-
     return false
 end
 
 
 
-
-
-
-
--- 智能集结呐喊
-
-
+-- 【强制检查】智能集结呐喊 - 直接使用状态栏控制
 
 local function SmartRallyingCry()
-    local config = GetConfig()
+    local toggles = GetToggleState()
 
-
-
-    if not config.rallyingCryEnabled or not spells.rallying_cry or not spells.rallying_cry:ready() then
+    if not toggles.rallyingCryEnabled then
         return false
     end
 
 
 
-
+    if not spells.rallying_cry or not spells.rallying_cry:ready() then
+        return false
+    end
 
 
 
     if not (player.group or player.raid) then
         return false
     end
-
-
-
-
 
 
 
@@ -2139,23 +1097,15 @@ local function SmartRallyingCry()
 
 
 
-
+    local rallyingCryHealth = Aurora.Config:Read("MiracleWarrior.rallying_cry_health") or 50
 
 
 
     local totalHealth = 0
 
-
-
     local totalMembers = 0
 
-
-
     local lowHealthMembers = 0
-
-
-
-
 
 
 
@@ -2163,18 +1113,12 @@ local function SmartRallyingCry()
         for i = 1, GetNumGroupMembers() do
             local unit = Aurora.UnitManager:Get("raid" .. i)
 
-
-
             if unit and unit.exists and unit.alive and unit.distanceto(player) <= 40 then
                 totalHealth = totalHealth + unit.hp
 
-
-
                 totalMembers = totalMembers + 1
 
-
-
-                if unit.hp < config.rallyingCryHealth then
+                if unit.hp < rallyingCryHealth then
                     lowHealthMembers = lowHealthMembers + 1
                 end
             end
@@ -2183,18 +1127,12 @@ local function SmartRallyingCry()
         for i = 1, GetNumGroupMembers() do
             local unit = Aurora.UnitManager:Get("party" .. i)
 
-
-
             if unit and unit.exists and unit.alive and unit.distanceto(player) <= 40 then
                 totalHealth = totalHealth + unit.hp
 
-
-
                 totalMembers = totalMembers + 1
 
-
-
-                if unit.hp < config.rallyingCryHealth then
+                if unit.hp < rallyingCryHealth then
                     lowHealthMembers = lowHealthMembers + 1
                 end
             end
@@ -2202,26 +1140,14 @@ local function SmartRallyingCry()
 
 
 
-
-
-
-
         totalHealth = totalHealth + player.hp
-
-
 
         totalMembers = totalMembers + 1
 
-
-
-        if player.hp < config.rallyingCryHealth then
+        if player.hp < rallyingCryHealth then
             lowHealthMembers = lowHealthMembers + 1
         end
     end
-
-
-
-
 
 
 
@@ -2229,31 +1155,17 @@ local function SmartRallyingCry()
 
 
 
-
-
-
-
-    if averageHealth < config.rallyingCryHealth or lowHealthMembers >= 3 then
+    if averageHealth < rallyingCryHealth or lowHealthMembers >= 3 then
         local success = spells.rallying_cry:cast(player)
-
-
 
         if success then
             combatStats.rallyingCries = combatStats.rallyingCries + 1
 
-
-
             SetSkillCooldown("rallying_cry", 180)
-
-
 
             return true
         end
     end
-
-
-
-
 
 
 
@@ -2262,22 +1174,12 @@ end
 
 
 
-
-
-
-
--- 【修正】智能挫志怒吼 - 卡CD使用，兼顾20%增伤 + 怒气生成
-
-
+-- 智能挫志怒吼
 
 local function SmartDemoralizingShout()
     if not spells.demoralizing_shout or not spells.demoralizing_shout:ready() or not spells.demoralizing_shout:castable(player) then
         return false
     end
-
-
-
-
 
 
 
@@ -2287,22 +1189,10 @@ local function SmartDemoralizingShout()
 
 
 
-
-
-
-
-    -- 卡CD使用，提供20%增伤和怒气生成
-
-
-
     local enemyCount = player.enemiesaround(8) or 0
-
-
 
     if enemyCount >= 1 then
         local success = spells.demoralizing_shout:cast(player)
-
-
 
         if success and ShouldUseLongCooldown() then
             return true
@@ -2311,22 +1201,12 @@ local function SmartDemoralizingShout()
 
 
 
-
-
-
-
     return false
 end
 
 
 
-
-
-
-
--- 【修正】智能天神下凡 - 卡CD使用，不刻意留BOSS战
-
-
+-- 智能天神下凡
 
 local function SmartAvatar()
     if not spells.avatar or not spells.avatar:ready() or not spells.avatar:castable(player) then
@@ -2335,21 +1215,11 @@ local function SmartAvatar()
 
 
 
-    -- 山巅战循环启动关键，卡CD使用
-
-
-
     local success = spells.avatar:cast(player)
-
-
 
     if success and ShouldUseLongCooldown() then
         return true
     end
-
-
-
-
 
 
 
@@ -2358,13 +1228,7 @@ end
 
 
 
-
-
-
-
--- 【修正】毁灭者 - 卡CD使用，怒气 + 群体伤害双收益
-
-
+-- 毁灭者
 
 local function SmartRavager()
     if not spells.Ravager or not spells.Ravager:ready() or not spells.Ravager:castable(player) then
@@ -2373,39 +1237,19 @@ local function SmartRavager()
 
 
 
-
-
-
-
-    -- 卡CD使用，提供怒气和群体伤害
-
-
-
     return spells.Ravager:cast(player)
 end
 
 
 
-
-
-
-
--- 【新增】智能盾牌冲锋
-
-
+-- 【强制检查】智能盾牌冲锋 - 直接使用状态栏控制
 
 local function SmartShieldCharge()
-    local config = GetConfig()
+    local toggles = GetToggleState()
 
-
-
-    if not config.shieldChargeEnabled then
+    if not toggles.shieldChargeEnabled then
         return false
     end
-
-
-
-
 
 
 
@@ -2415,21 +1259,9 @@ local function SmartShieldCharge()
 
 
 
-
-
-
-
-    -- 只在目标距离合适时使用
-
-
-
     if target.distanceto(player) <= 4 then
         return spells.shield_charge:cast(target)
     end
-
-
-
-
 
 
 
@@ -2438,20 +1270,12 @@ end
 
 
 
-
-
-
-
--- 优化后的嘲讽功能
-
-
-
--- 优化嘲讽逻辑
+-- 【强制检查】智能嘲讽 - 直接使用状态栏控制
 
 local function Taunt()
-    local config = GetConfig()
+    local toggles = GetToggleState()
 
-    if not config.tauntEnabled then
+    if not toggles.tauntEnabled then
         return false
     end
 
@@ -2463,30 +1287,38 @@ local function Taunt()
 
 
 
-    -- 使用框架的 filter 方法找到需要嘲讽的目标
+    local tauntTarget = nil
 
-    local tauntTarget = Aurora.enemies:within(30):first(function(enemy)
+    Aurora.enemies:within(10):each(function(enemy)
+        if tauntTarget then return true end
+
+
+
         if enemy.exists and enemy.alive and enemy.enemy then
-            -- 检查目标是否在攻击队友
+            if enemy.target.exists and enemy.target.guid ~= player.guid then
+                if enemy.target.friend and enemy.target.player then
+                    if enemy.distanceto(player) <= 30 then
+                        tauntTarget = enemy
 
-            if enemy.target.exists and enemy.target.guid ~= player.guid and enemy.target.friend then
-                return true
+                        return true
+                    end
+                end
             end
         end
-
-        return false
     end)
 
 
 
-    if tauntTarget and spells.taunt and spells.taunt:ready() and spells.taunt:castable(tauntTarget) then
-        local success = spells.taunt:cast(tauntTarget)
+    if tauntTarget then
+        if spells.taunt and spells.taunt:ready() and spells.taunt:castable(tauntTarget) then
+            local success = spells.taunt:cast(tauntTarget)
 
-        if success then
-            combatStats.taunts = combatStats.taunts + 1
+            if success then
+                combatStats.taunts = combatStats.taunts + 1
+            end
+
+            return success
         end
-
-        return success
     end
 
 
@@ -2496,37 +1328,21 @@ end
 
 
 
-
-
--- 增强减伤技能链 - 修复盾墙CD问题并添加起手盾墙
-
-
+-- 【强制检查】增强减伤技能链 - 直接使用状态栏控制
 
 local function EnhancedDefensiveChain()
-    local config = GetConfig()
+    local toggles = GetToggleState()
 
-
-
-    if not config.defensiveEnabled then
+    if not toggles.defensiveEnabled then
         return false
     end
 
 
 
-
-
-
-
     -- 最高优先级：盾牌格挡全程覆盖
-
-
 
     if spells.shield_block and spells.shield_block:ready() and spells.shield_block:castable(player) then
         local shieldBlockRemaining = player.auraremains(auras.shield_block_buff.spellId) or 0
-
-
-
-
 
 
 
@@ -2534,71 +1350,21 @@ local function EnhancedDefensiveChain()
             if spells.shield_block:cast(player) then
                 shieldBlockTracker.lastCastTime = GetTime()
 
-
-
                 return true
             end
         end
     end
-
-
-
-
-
-
-
-    -- 【新增】起手阶段：战斗时间小于3秒时使用盾墙
-
-
-
-    if player.timecombat < 3 then
-        if spells.shield_wall and spells.shield_wall:ready() and spells.shield_wall:castable(player) and not player.aura(871) then
-            -- 显示起手提示
-
-
-
-            local language = Aurora.Config:Read("MiracleWarrior.general.language") or "zh"
-
-
-
-            local message = language == "zh" and "起手盾墙!" or "Opening Shield Wall!"
-
-
-
-
-
-
-
-            Aurora.alert(message, 871) -- 盾墙图标
-
-
-
-
-
-
-
-            if spells.shield_wall:cast(player) then
-                return true
-            end
-        end
-    end
-
-
-
-
 
 
 
     -- 无视苦痛 - 基于怒气管理
 
-
-
     if spells.ignore_pain and spells.ignore_pain:ready() and spells.ignore_pain:castable(player) then
+        local rageThreshold = Aurora.Config:Read("MiracleWarrior.rage_threshold") or 60
+
         local currentRage = player.rage or 0
 
-
-
-        if currentRage >= config.rageThreshold then
+        if currentRage >= rageThreshold then
             if spells.ignore_pain:cast(player) then
                 return true
             end
@@ -2607,29 +1373,23 @@ local function EnhancedDefensiveChain()
 
 
 
+    -- 盾墙和破釜沉舟
 
+    local shieldWallHealth = Aurora.Config:Read("MiracleWarrior.shield_wall_health") or 70
 
-
-
-    -- 【修复】盾墙CD问题 - 完全移除CD检查
+    local lastStandHealth = Aurora.Config:Read("MiracleWarrior.last_stand_health") or 40
 
 
 
     -- 极度危险：血量低于破釜沉舟阈值
 
-
-
-    if player.hp < config.lastStandHealth then
+    if player.hp < lastStandHealth then
         if spells.last_stand and spells.last_stand:ready() and spells.last_stand:castable(player) then
             if not IsSkillOnCooldown("last_stand") then
                 local success = spells.last_stand:cast(player)
 
-
-
                 if success then
                     SetSkillCooldown("last_stand", 180)
-
-
 
                     return true
                 end
@@ -2638,46 +1398,24 @@ local function EnhancedDefensiveChain()
 
 
 
-
-
-
-
-        -- 盾墙：移除CD检查，只检查技能是否可用
-
-
-
-        if spells.shield_wall and spells.shield_wall:ready() and spells.shield_wall:castable(player) and not player.aura(871) then
+        if spells.shield_wall and spells.shield_wall:ready() and spells.shield_wall:castable(player) then
             if spells.shield_wall:cast(player) then
                 return true
             end
         end
     end
-
-
-
-
 
 
 
     -- 中度危险：血量低于盾墙阈值
 
-
-
-    if player.hp < config.shieldWallHealth then
-        -- 盾墙：移除CD检查，只检查技能是否可用
-
-
-
-        if spells.shield_wall and spells.shield_wall:ready() and spells.shield_wall:castable(player) and not player.aura(871) then
+    if player.hp < shieldWallHealth then
+        if spells.shield_wall and spells.shield_wall:ready() and spells.shield_wall:castable(player) then
             if spells.shield_wall:cast(player) then
                 return true
             end
         end
     end
-
-
-
-
 
 
 
@@ -2686,86 +1424,48 @@ end
 
 
 
-
-
-
-
 -- 战斗数据统计
-
-
 
 local function RecordCombatStats()
     if not player.combat then
         if combatStats.startTime > 0 then
             local combatDuration = GetTime() - combatStats.startTime
 
-
-
             if combatDuration > 10 then
                 print(string.format("战斗统计 - 持续时间: %.1f秒, 打断: %d次, 嘲讽: %d次, 反射: %d次, 乘胜追击: %d次, 集结呐喊: %d次",
-
-
 
                     combatDuration, combatStats.interrupts, combatStats.taunts, combatStats.reflects,
                     combatStats.victoryRushes, combatStats.rallyingCries))
             end
 
-
-
             combatStats.startTime = 0
-
-
 
             combatStats.interrupts = 0
 
-
-
             combatStats.taunts = 0
-
-
 
             combatStats.reflects = 0
 
-
-
             combatStats.victoryRushes = 0
-
-
 
             combatStats.rallyingCries = 0
         end
-
-
 
         return
     end
 
 
 
-
-
-
-
     if combatStats.startTime == 0 then
         combatStats.startTime = GetTime()
 
-
-
         combatStats.interrupts = 0
-
-
 
         combatStats.taunts = 0
 
-
-
         combatStats.reflects = 0
 
-
-
         combatStats.victoryRushes = 0
-
-
 
         combatStats.rallyingCries = 0
     end
@@ -2773,17 +1473,7 @@ end
 
 
 
-
-
-
-
--- 智能雷霆一击释放判断
-
-
-
--- 【修复】智能雷霆一击释放判断
-
--- 【完全重写】智能雷霆一击 - 移除所有等待逻辑
+-- 智能雷霆一击
 
 local function SmartThunderClap()
     if not spells.thunder_clap or not spells.thunder_clap:ready() or not spells.thunder_clap:castable(player) then
@@ -2800,11 +1490,9 @@ local function SmartThunderClap()
 
     local overpowerState = GetOverpowerState()
 
-    local hasSevereThunder = player.aura(1252096) -- 套装雷霆buff
+    local hasSevereThunder = player.aura(1252096)
 
 
-
-    -- 【关键修复】只要有怒意迸发buff，立即释放雷霆一击
 
     if overpowerState.isReady then
         return spells.thunder_clap:cast(player)
@@ -2812,15 +1500,11 @@ local function SmartThunderClap()
 
 
 
-    -- 如果有套装雷霆buff，也立即释放（即使没有怒意迸发）
-
     if hasSevereThunder then
         return spells.thunder_clap:cast(player)
     end
 
 
-
-    -- 普通情况：有敌人就释放
 
     local enemyCount = player.enemiesaround(8) or 0
 
@@ -2837,186 +1521,46 @@ end
 
 -- 智能盾牌猛击
 
-
-
--- 【修复】智能盾牌猛击
-
 local function SmartShieldSlam()
-    local overpowerState = GetOverpowerState()
-
-
-
-    -- 直接使用ID检查套装雷霆buff
-
-    local hasSevereThunder = player.aura(1252096)
-
-
-
     if not spells.shield_slam or not spells.shield_slam:ready() or not spells.shield_slam:castable(target) then
         return false
     end
 
 
 
-    -- 【修复】只有在套装雷霆+怒意迸发且雷霆轰击即将就绪时才等待
-
-    if hasSevereThunder and overpowerState.isReady then
-        local thunderBlastCD = spells.thunder_blast and spells.thunder_blast:getcd() or 999
-
-        if thunderBlastCD <= 1 then -- 只有1秒内才等待
-            return false
-        end
-    end
-
-
-
-    -- 【修复】简化等待条件
-
-    if overpowerState.isReady and overpowerState.shouldWaitForThunder then
-        local thunderBlastCD = spells.thunder_blast and spells.thunder_blast:getcd() or 999
-
-        if thunderBlastCD <= 1 then -- 只有1秒内才等待
-            return false
-        end
-    end
-
-
-
-    -- 正常释放盾牌猛击
-
-    if spells.shield_slam:cast(target) then
-        return true
-    end
-
-
-
-    return false
+    return spells.shield_slam:cast(target)
 end
-
-
-
-
 
 
 
 -- 自动战斗怒吼
 
-
-
 local function SmartBattleShout()
-    local config = GetConfig()
+    local battleShoutEnabled = Aurora.Config:Read("MiracleWarrior.battle_shout_enabled") or true
 
 
 
-    if not config.battleShoutEnabled or not spells.Battle_Shout or not spells.Battle_Shout:ready() then
+    if not battleShoutEnabled then
         return false
     end
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-    if not (player.group or player.raid) then
+    if not spells.Battle_Shout or not spells.Battle_Shout:ready() then
         return false
     end
 
 
 
-
-
-
-
-    local hasBattleShout = player.aura(spells.Battle_Shout.spellId)
-
-
-
-    if hasBattleShout then
+    if player.combat then
         return false
     end
 
 
 
-
-
-
-
-    local needsBattleShout = false
-
-
-
-    if player.raid then
-        for i = 1, GetNumGroupMembers() do
-            local unit = Aurora.UnitManager:Get("raid" .. i)
-
-
-
-            if unit and unit.exists and unit.alive and unit.distanceto(player) <= 40 then
-                if not unit.aura(6673) then
-                    needsBattleShout = true
-
-
-
-                    break
-                end
-            end
-        end
-    elseif player.group then
-        for i = 1, GetNumGroupMembers() do
-            local unit = Aurora.UnitManager:Get("party" .. i)
-
-
-
-            if unit and unit.exists and unit.alive and unit.distanceto(player) <= 40 then
-                if not unit.aura(6673) then
-                    needsBattleShout = true
-
-
-
-                    break
-                end
-            end
-        end
-
-
-
-
-
-
-
-        if not player.aura(6673) then
-            needsBattleShout = true
-        end
+    if not player.aura(6673) then
+        return spells.Battle_Shout:cast(player)
     end
-
-
-
-
-
-
-
-    if needsBattleShout then
-        local success = spells.Battle_Shout:cast(player)
-
-
-
-        if success then
-            return true
-        end
-    end
-
-
-
-
 
 
 
@@ -3025,38 +1569,16 @@ end
 
 
 
-
-
-
-
 -- 主战斗循环
-
-
 
 local function Dps()
     RecordCombatStats()
-
-
 
     UpdateRagingBlowState()
 
 
 
-    -- 调试信息：检查雷霆一击状态
-
-    local overpowerState = GetOverpowerState()
-
-    local hasSevereThunder = player.aura(1252096)
-
-
-
-
-
-
-
     -- 最高优先级：高危技能防御
-
-
 
     if HighRiskSpellDefense() then
         return true
@@ -3064,13 +1586,7 @@ local function Dps()
 
 
 
-
-
-
-
     -- 第二优先级：减伤链
-
-
 
     if EnhancedDefensiveChain() then
         return true
@@ -3078,13 +1594,7 @@ local function Dps()
 
 
 
-
-
-
-
     -- 第三优先级：药水使用
-
-
 
     if SmartPotionUse() then
         return true
@@ -3092,13 +1602,7 @@ local function Dps()
 
 
 
-
-
-
-
     -- 第四优先级：饰品使用
-
-
 
     if SmartTrinketUse() then
         return true
@@ -3106,44 +1610,18 @@ local function Dps()
 
 
 
-
-
-
-
-    -- 第五优先级：进攻冷却技能 - 卡CD使用
-
-
+    -- 第五优先级：进攻冷却技能
 
     if Aurora.Rotation.Cooldown:GetValue() then
-        -- 毁灭者 - 卡CD使用
-
-
-
         if SmartRavager() then
             return true
         end
 
 
 
-
-
-
-
-        -- 天神下凡 - 卡CD使用，不刻意留BOSS战
-
-
-
         if SmartAvatar() then
             return true
         end
-
-
-
-
-
-
-
-        -- 挫志怒吼 - 卡CD使用，20%增伤 + 怒气生成
 
 
 
@@ -3154,13 +1632,7 @@ local function Dps()
 
 
 
-
-
-
-
     -- 第六优先级：集结呐喊
-
-
 
     if SmartRallyingCry() then
         return true
@@ -3168,13 +1640,7 @@ local function Dps()
 
 
 
-
-
-
-
     -- 第七优先级：乘胜追击治疗
-
-
 
     if SmartVictoryRush() then
         return true
@@ -3182,13 +1648,7 @@ local function Dps()
 
 
 
-
-
-
-
     -- 第八优先级：法术反射
-
-
 
     if SmartSpellReflect() then
         return true
@@ -3196,13 +1656,7 @@ local function Dps()
 
 
 
-
-
-
-
     -- 第九优先级：嘲讽保护队友
-
-
 
     if Taunt() then
         return true
@@ -3210,13 +1664,7 @@ local function Dps()
 
 
 
-
-
-
-
     -- 第十优先级：打断关键法术
-
-
 
     if Interrupts() then
         return true
@@ -3224,13 +1672,7 @@ local function Dps()
 
 
 
-
-
-
-
     -- 第十一优先级：智能雷霆一击
-
-
 
     if SmartThunderClap() then
         return true
@@ -3238,17 +1680,7 @@ local function Dps()
 
 
 
-
-
-
-
-    --新增优先级：智能盾猛
-
-
-
-
-
-
+    -- 第十二优先级：智能盾猛
 
     if SmartShieldSlam() then
         return true
@@ -3256,17 +1688,7 @@ local function Dps()
 
 
 
-
-
-
-
-
-
-
-
-    -- 第十二优先级：英勇投掷
-
-
+    -- 第十三优先级：英勇投掷
 
     if SmartHeroicThrow() then
         return true
@@ -3274,13 +1696,7 @@ local function Dps()
 
 
 
-
-
-
-
-    -- 第十三优先级：盾牌冲锋（受开关控制）
-
-
+    -- 第十四优先级：盾牌冲锋
 
     if SmartShieldCharge() then
         return true
@@ -3288,23 +1704,13 @@ local function Dps()
 
 
 
-
-
-
-
     -- 输出循环
-
-
 
     if spells.AutoAttack and spells.AutoAttack:ready() and spells.AutoAttack:castable(target) then
         if spells.AutoAttack:cast(target) then
             return true
         end
     end
-
-
-
-
 
 
 
@@ -3318,19 +1724,11 @@ local function Dps()
 
 
 
-
-
-
-
     if spells.demolish and spells.demolish:ready() and spells.demolish:castable(player) then
         if spells.demolish:cast(player) then
             return true
         end
     end
-
-
-
-
 
 
 
@@ -3344,25 +1742,15 @@ local function Dps()
 
 
 
-
-
-
-
-    local config = GetConfig()
-
-
+    local rageThreshold = Aurora.Config:Read("MiracleWarrior.rage_threshold") or 60
 
     if spells.ignore_pain and spells.ignore_pain:ready() and spells.ignore_pain:castable(player) then
-        if player.rage >= config.rageThreshold then
+        if player.rage >= rageThreshold then
             if spells.ignore_pain:cast(player) then
                 return true
             end
         end
     end
-
-
-
-
 
 
 
@@ -3374,39 +1762,23 @@ local function Dps()
 
 
 
-
-
-
-
     return false
 end
-
-
-
-
 
 
 
 local function Ooc()
     lastRage = player.rage
 
-
-
     rageConsumed = 0
-
-
 
     ragingBlowReady = false
 
 
 
-
-
-
-
-
-
-
+    if not player.combat then
+        SmartBattleShout()
+    end
 
 
 
@@ -3419,23 +1791,97 @@ end
 
 
 
+-- 注册自定义宏命令
+
+Aurora.Macro:RegisterCommand("taunt", function()
+    if Aurora.Rotation.TauntToggle then
+        local current = Aurora.Rotation.TauntToggle:GetValue()
+
+        Aurora.Rotation.TauntToggle:SetValue(not current)
+
+        print("嘲讽: " .. (not current and "启用" or "禁用"))
+    end
+end, "切换嘲讽状态")
 
 
 
+Aurora.Macro:RegisterCommand("defensive", function()
+    if Aurora.Rotation.DefensiveToggle then
+        local current = Aurora.Rotation.DefensiveToggle:GetValue()
 
--- Register the rotation
+        Aurora.Rotation.DefensiveToggle:SetValue(not current)
+
+        print("减伤: " .. (not current and "启用" or "禁用"))
+    end
+end, "切换减伤状态")
 
 
+
+Aurora.Macro:RegisterCommand("reflect", function()
+    if Aurora.Rotation.SpellReflectToggle then
+        local current = Aurora.Rotation.SpellReflectToggle:GetValue()
+
+        Aurora.Rotation.SpellReflectToggle:SetValue(not current)
+
+        print("反射: " .. (not current and "启用" or "禁用"))
+    end
+end, "切换反射状态")
+
+
+
+Aurora.Macro:RegisterCommand("victory", function()
+    if Aurora.Rotation.VictoryRushToggle then
+        local current = Aurora.Rotation.VictoryRushToggle:GetValue()
+
+        Aurora.Rotation.VictoryRushToggle:SetValue(not current)
+
+        print("乘胜: " .. (not current and "启用" or "禁用"))
+    end
+end, "切换乘胜追击状态")
+
+
+
+Aurora.Macro:RegisterCommand("rally", function()
+    if Aurora.Rotation.RallyingCryToggle then
+        local current = Aurora.Rotation.RallyingCryToggle:GetValue()
+
+        Aurora.Rotation.RallyingCryToggle:SetValue(not current)
+
+        print("集结: " .. (not current and "启用" or "禁用"))
+    end
+end, "切换集结呐喊状态")
+
+
+
+Aurora.Macro:RegisterCommand("charge", function()
+    if Aurora.Rotation.ShieldChargeToggle then
+        local current = Aurora.Rotation.ShieldChargeToggle:GetValue()
+
+        Aurora.Rotation.ShieldChargeToggle:SetValue(not current)
+
+        print("盾冲: " .. (not current and "启用" or "禁用"))
+    end
+end, "切换盾牌冲锋状态")
+
+
+
+Aurora.Macro:RegisterCommand("hardcontrol", function()
+    if Aurora.Rotation.HardControlInterruptToggle then
+        local current = Aurora.Rotation.HardControlInterruptToggle:GetValue()
+
+        Aurora.Rotation.HardControlInterruptToggle:SetValue(not current)
+
+        print("硬控: " .. (not current and "启用" or "禁用"))
+    end
+end, "切换硬控打断状态")
+
+
+
+-- 注册主循环
 
 Aurora:RegisterRoutine(function()
     if player.dead or player.aura("Food") or player.aura("Drink") then
         return
-    end
-
-
-
-    if SmartBattleShout() then
-        return true
     end
 
 
@@ -3449,13 +1895,7 @@ end, "WARRIOR", 3, "MiracleWarrior")
 
 
 
-
-
-
-
 -- 检查循环版本
-
-
 
 CheckRotationVersion()
 
