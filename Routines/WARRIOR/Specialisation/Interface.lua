@@ -19,14 +19,20 @@ local L = {
         tutorial = "使用教程",
         tutorial_text = "Miracle拥有自创HyperBurst系统，让你更智能化的打出最高雷霆轰击伤害。打断依靠Aurora list managerment，减伤自动应对。有问题及时反馈，祝您战斗愉快！",
 
+        macro_reference = "宏命令参考",
+        macro_text = [[
+/aurora taunt - 切换嘲讽状态
+/aurora defensive - 切换减伤状态
+/aurora reflect - 切换反射状态
+/aurora victory - 切换乘胜追击状态
+/aurora rally - 切换集结呐喊状态
+/aurora charge - 切换盾牌冲锋状态
+/aurora hardcontrol - 切换硬控打断状态
+/aurora shout - 切换挫志怒吼状态]],
+
+
         -- Combat Settings
         basic_settings = "基础设置",
-        victory_rush = "启用乘胜追击",
-        victory_rush_tooltip = "自动使用乘胜追击进行治疗",
-        taunt = "启用自动嘲讽",
-        taunt_tooltip = "自动嘲讽攻击队友的敌人",
-        shield_charge = "启用盾牌冲锋",
-        shield_charge_tooltip = "启用/禁用盾牌冲锋技能",
         rage_threshold = "怒气阈值",
         rage_threshold_tooltip = "当怒气达到此值时使用无视苦痛",
         aoe_threshold = "AOE阈值",
@@ -39,14 +45,6 @@ local L = {
         ttd_threshold_tooltip = "目标剩余存活时间低于此值时不会使用长冷却技能",
 
         -- Defensive Settings
-        smart_defensive = "智能减伤",
-        defensive_enabled = "启用智能减伤",
-        defensive_enabled_tooltip = "根据血量自动使用减伤技能",
-        spell_reflect = "启用法术反射",
-        spell_reflect_tooltip = "自动使用法术反射",
-        rallying_cry = "启用集结呐喊",
-        rallying_cry_tooltip = "自动使用集结呐喊保护团队",
-
         health_threshold = "血量阈值设置",
         victory_rush_health = "乘胜追击血量(%)",
         victory_rush_health_tooltip = "血量低于此值时使用乘胜追击",
@@ -58,15 +56,9 @@ local L = {
         last_stand_health_tooltip = "血量低于此值时使用破釜沉舟",
 
         -- Interrupt Settings
-        interrupt_function = "打断功能",
-        interrupt_enabled = "启用打断",
-        interrupt_enabled_tooltip = "自动使用拳击打断敌人施法",
-        hard_control = "启用硬控打断",
-        hard_control_tooltip = "当拳击不可用时，使用震荡波、风暴之锤、挑战怒吼进行打断",
+        interrupt_timing = "打断时机设置",
         random_interrupt = "随机打断时间",
         random_interrupt_tooltip = "为打断添加随机延迟，避免被检测",
-
-        interrupt_timing = "打断时机",
         min_delay = "最小延迟(秒)",
         min_delay_tooltip = "打断的最小延迟时间",
         max_delay = "最大延迟(秒)",
@@ -113,14 +105,15 @@ local L = {
             low = "低"
         },
 
-        -- Status Bar Labels (保持简洁)
+        -- Status Bar Labels
         status_taunt = "嘲讽",
         status_defensive = "减伤",
         status_reflect = "反射",
         status_victory = "乘胜",
         status_rally = "集结",
         status_charge = "盾冲",
-        status_hardcontrol = "硬控"
+        status_hardcontrol = "硬控",
+        status_shout = "挫志"
     },
 
     en = {
@@ -140,14 +133,26 @@ local L = {
         tutorial_text =
         "Miracle features the innovative HyperBurst system for optimal Thunder Blast damage. Interrupts rely on Aurora list management, defensive cooldowns are automated. Please report any issues. Enjoy your battles!",
 
+        macro_reference = "Macro Reference",
+        macro_text = [[
+/aurora taunt - Toggle taunt status
+/aurora defensive - Toggle defensive status
+/aurora reflect - Toggle spell reflect status
+/aurora victory - Toggle victory rush status
+/aurora rally - Toggle rallying cry status
+/aurora charge - Toggle shield charge status
+/aurora hardcontrol - Toggle hard control interrupt status
+/aurora shout - Toggle demoralizing shout status]],
+
+        status_bar_info = "Status Bar Control",
+        status_bar_text = [[Following features moved to status bar:
+• Taunt • Defensive • Reflect • Victory Rush
+• Rallying Cry • Shield Charge • Hard Control • Demoralizing Shout
+
+Status bar located at top of screen for quick toggling]],
+
         -- Combat Settings
         basic_settings = "Basic Settings",
-        victory_rush = "Enable Victory Rush",
-        victory_rush_tooltip = "Automatically use Victory Rush for healing",
-        taunt = "Enable Auto Taunt",
-        taunt_tooltip = "Automatically taunt enemies attacking allies",
-        shield_charge = "Enable Shield Charge",
-        shield_charge_tooltip = "Enable/disable Shield Charge ability",
         rage_threshold = "Rage Threshold",
         rage_threshold_tooltip = "Use Ignore Pain when rage reaches this value",
         aoe_threshold = "AOE Threshold",
@@ -160,14 +165,6 @@ local L = {
         ttd_threshold_tooltip = "Don't use long cooldowns if target TTD is below this value",
 
         -- Defensive Settings
-        smart_defensive = "Smart Defensive",
-        defensive_enabled = "Enable Smart Defensive",
-        defensive_enabled_tooltip = "Automatically use defensive skills based on health",
-        spell_reflect = "Enable Spell Reflect",
-        spell_reflect_tooltip = "Automatically use Spell Reflect",
-        rallying_cry = "Enable Rallying Cry",
-        rallying_cry_tooltip = "Automatically use Rallying Cry to protect the team",
-
         health_threshold = "Health Threshold Settings",
         victory_rush_health = "Victory Rush Health(%)",
         victory_rush_health_tooltip = "Use Victory Rush when health below this value",
@@ -179,15 +176,9 @@ local L = {
         last_stand_health_tooltip = "Use Last Stand when health below this value",
 
         -- Interrupt Settings
-        interrupt_function = "Interrupt Function",
-        interrupt_enabled = "Enable Interrupt",
-        interrupt_enabled_tooltip = "Automatically use Pummel to interrupt enemy casts",
-        hard_control = "Enable Hard Control Interrupt",
-        hard_control_tooltip = "Use Shockwave, Storm Bolt, or Demoralizing Shout when Pummel unavailable",
+        interrupt_timing = "Interrupt Timing Settings",
         random_interrupt = "Random Interrupt Time",
         random_interrupt_tooltip = "Add random delay to interrupts to avoid detection",
-
-        interrupt_timing = "Interrupt Timing",
         min_delay = "Min Delay(sec)",
         min_delay_tooltip = "Minimum delay time for interrupts",
         max_delay = "Max Delay(sec)",
@@ -235,14 +226,15 @@ local L = {
             low = "Low"
         },
 
-        -- Status Bar Labels (保持简洁)
+        -- Status Bar Labels
         status_taunt = "Taunt",
         status_defensive = "Def",
         status_reflect = "Reflect",
         status_victory = "Victory",
         status_rally = "Rally",
         status_charge = "Charge",
-        status_hardcontrol = "HardCtrl"
+        status_hardcontrol = "HardCtrl",
+        status_shout = "Shout"
     }
 }
 
@@ -278,6 +270,7 @@ local function CreateInterface()
                 Aurora.alert("Language changed to " .. value .. ". Please /reload to apply changes.", 132306)
             end
         })
+        :Spacer()
 
         :Header({ text = T("tutorial") })
         :Text({
@@ -285,28 +278,61 @@ local function CreateInterface()
             color = "normal",
             size = 10
         })
+        :Spacer()
 
-    -- 战斗设置
+
+
+    -- 【新增】宏命令参考
+        :Header({ text = T("macro_reference") })
+        :Text({
+            text = "/aurora taunt - 切换嘲讽状态",
+            color = "normal",
+            size = 11
+        })
+        :Text({
+            text = " /aurora shout - 切换挫志怒吼状态",
+            color = "normal",
+            size = 11
+        })
+        :Text({
+            text = "/aurora defensive - 切换减伤状态",
+            color = "normal",
+            size = 11
+        })
+        :Text({
+            text = "/aurora reflect - 切换反射状态",
+            color = "normal",
+            size = 11
+        })
+        :Text({
+            text = "/aurora victory - 切换乘胜追击状态",
+            color = "normal",
+            size = 11
+        })
+        :Text({
+            text = "/aurora rally - 切换集结呐喊状态",
+            color = "normal",
+            size = 11
+        })
+        :Text({
+            text = "/aurora charge - 切换盾牌冲锋状态",
+            color = "normal",
+            size = 11
+        })
+        :Text({
+            text = "/aurora hardcontrol - 切换硬控打断状态",
+            color = "normal",
+            size = 11
+        })
+
+
+
+
+
+
+    -- 战斗设置 - 删除已由状态栏控制的选项，美化布局
         :Tab(T("combat"))
         :Header({ text = T("basic_settings") })
-        :Checkbox({
-            text = T("victory_rush"),
-            key = "MiracleWarrior.victory_rush_enabled",
-            default = true,
-            tooltip = T("victory_rush_tooltip")
-        })
-        :Checkbox({
-            text = T("taunt"),
-            key = "MiracleWarrior.taunt.enabled",
-            default = true,
-            tooltip = T("taunt_tooltip")
-        })
-        :Checkbox({
-            text = T("shield_charge"),
-            key = "MiracleWarrior.shield_charge_enabled",
-            default = true,
-            tooltip = T("shield_charge_tooltip")
-        })
         :Slider({
             text = T("rage_threshold"),
             key = "MiracleWarrior.rage_threshold",
@@ -325,8 +351,8 @@ local function CreateInterface()
             default = 3,
             tooltip = T("aoe_threshold_tooltip")
         })
+        :Spacer()
 
-    -- 在战斗设置标签中，只保留简单的TTD设置
         :Header({ text = T("ttd_settings") })
         :Checkbox({
             text = T("ttd_enabled"),
@@ -343,28 +369,9 @@ local function CreateInterface()
             default = 15,
             tooltip = T("ttd_threshold_tooltip")
         })
-    -- 减伤设置
-        :Tab(T("defensive"))
-        :Header({ text = T("smart_defensive") })
-        :Checkbox({
-            text = T("defensive_enabled"),
-            key = "MiracleWarrior.defensive.enabled",
-            default = true,
-            tooltip = T("defensive_enabled_tooltip")
-        })
-        :Checkbox({
-            text = T("spell_reflect"),
-            key = "MiracleWarrior.spell_reflect.enabled",
-            default = true,
-            tooltip = T("spell_reflect_tooltip")
-        })
-        :Checkbox({
-            text = T("rallying_cry"),
-            key = "MiracleWarrior.rallying_cry.enabled",
-            default = true,
-            tooltip = T("rallying_cry_tooltip")
-        })
 
+    -- 减伤设置 - 删除已由状态栏控制的选项，只保留血量阈值
+        :Tab(T("defensive"))
         :Header({ text = T("health_threshold") })
         :Slider({
             text = T("victory_rush_health"),
@@ -403,29 +410,15 @@ local function CreateInterface()
             tooltip = T("last_stand_health_tooltip")
         })
 
-    -- 打断设置
+    -- 打断设置 - 删除已由状态栏控制的选项，只保留时机设置
         :Tab(T("interrupt"))
-        :Header({ text = T("interrupt_function") })
-        :Checkbox({
-            text = T("interrupt_enabled"),
-            key = "MiracleWarrior.interrupt_enabled",
-            default = true,
-            tooltip = T("interrupt_enabled_tooltip")
-        })
-        :Checkbox({
-            text = T("hard_control"),
-            key = "MiracleWarrior.hard_control_interrupt_enabled",
-            default = true,
-            tooltip = T("hard_control_tooltip")
-        })
+        :Header({ text = T("interrupt_timing") })
         :Checkbox({
             text = T("random_interrupt"),
             key = "MiracleWarrior.random_interrupt",
             default = true,
             tooltip = T("random_interrupt_tooltip")
         })
-
-        :Header({ text = T("interrupt_timing") })
         :Slider({
             text = T("min_delay"),
             key = "MiracleWarrior.min_interrupt_delay",
@@ -454,7 +447,7 @@ local function CreateInterface()
             tooltip = T("interrupt_percent_tooltip")
         })
 
-    -- 饰品设置
+    -- 饰品设置 - 美化布局
         :Tab(T("trinket"))
         :Header({ text = T("trinket1_settings") })
         :Dropdown({
@@ -478,6 +471,7 @@ local function CreateInterface()
             default = 30,
             tooltip = T("trinket1_health_tooltip")
         })
+        :Spacer()
 
         :Header({ text = T("trinket2_settings") })
         :Dropdown({
@@ -502,7 +496,7 @@ local function CreateInterface()
             tooltip = T("trinket2_health_tooltip")
         })
 
-    -- 功能设置
+    -- 功能设置 - 美化布局
         :Tab(T("advanced"))
         :Header({ text = T("potion_settings") })
         :Dropdown({
@@ -525,6 +519,7 @@ local function CreateInterface()
             default = 30,
             tooltip = T("heal_potion_health_tooltip")
         })
+        :Spacer()
 
         :Header({ text = T("advanced_settings") })
         :Checkbox({
@@ -611,6 +606,15 @@ local function RegisterStatusToggles()
         var = "MiracleWarrior_HardControl",
         icon = 46968, -- 震荡波图标
         tooltip = "使用硬控技能进行打断",
+        default = true
+    })
+
+    -- 【新增】挫志怒吼状态栏
+    Aurora.Rotation.DemoralizingShoutToggle = Aurora:AddGlobalToggle({
+        label = "挫志",
+        var = "MiracleWarrior_DemoralizingShout",
+        icon = 1160, -- 挫志怒吼图标
+        tooltip = "自动使用挫志怒吼",
         default = true
     })
 

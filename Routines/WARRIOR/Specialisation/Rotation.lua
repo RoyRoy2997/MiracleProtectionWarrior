@@ -22,7 +22,7 @@ local talents = Aurora.SpellHandler.Spellbooks.warrior["3"].MiracleWarrior.talen
 
 -- 版本信息
 
-local ROTATION_VERSION = "2.0.0"
+local ROTATION_VERSION = "2.1.0"
 
 
 
@@ -287,7 +287,9 @@ local function GetToggleState()
 
         shieldChargeEnabled = IsToggleEnabled("ShieldChargeToggle"),
 
-        hardControlInterruptEnabled = IsToggleEnabled("HardControlInterruptToggle")
+        hardControlInterruptEnabled = IsToggleEnabled("HardControlInterruptToggle"),
+
+        demoralizingShoutEnabled = IsToggleEnabled("DemoralizingShoutToggle") -- 新增挫志怒吼状态栏控制
 
     }
 end
@@ -311,6 +313,10 @@ local function CheckRotationVersion()
         print("• 简化配置读取逻辑")
 
         print("• 添加宏命令控制")
+
+        print("• 新增挫志怒吼状态栏控制")
+
+        print("• 优化设置界面布局")
 
         print("================================")
 
@@ -461,7 +467,7 @@ local function ShouldUseLongCooldown()
 
     -- 没有目标时默认可以使用长冷却技能
 
-    return true
+    return false
 end
 
 
@@ -789,9 +795,11 @@ local lastInterruptTime = 0
 -- 智能打断系统
 
 local function SmartInterrupts()
-    local interruptEnabled = Aurora.Config:Read("MiracleWarrior.interrupt_enabled") or true
+    local toggles = GetToggleState()
 
-    if not interruptEnabled then
+    -- 打断功能现在由状态栏控制
+
+    if not toggles.hardControlInterruptEnabled then
         return false
     end
 
@@ -1274,9 +1282,17 @@ end
 
 
 
--- 智能挫志怒吼
+-- 【修改】智能挫志怒吼 - 添加状态栏控制
 
 local function SmartDemoralizingShout()
+    local toggles = GetToggleState()
+
+    if not toggles.demoralizingShoutEnabled then
+        return false
+    end
+
+
+
     if not spells.demoralizing_shout or not spells.demoralizing_shout:ready() or not spells.demoralizing_shout:castable(player) then
         return false
     end
@@ -1301,12 +1317,6 @@ local function SmartDemoralizingShout()
 
 
 
-
-
-
-
-
-
     return false
 end
 
@@ -1318,8 +1328,6 @@ local function SmartAvatar()
     if not spells.avatar or not spells.avatar:ready() or not spells.avatar:castable(player) then
         return false
     end
-
-
 
 
 
@@ -1686,8 +1694,6 @@ local function Dps()
 
 
 
-  
-
     -- 最高优先级：高危技能防御
 
     if HighRiskSpellDefense() then
@@ -1737,6 +1743,16 @@ local function Dps()
 
         if SmartDemoralizingShout() then
             return true
+        end
+
+
+
+        if spells.thunderous_roar and spells.thunderous_roar:ready() and spells.thunderous_roar:castable(player) then
+            if target.distanceto(player) <= 12 and ShouldUseLongCooldown() then
+                if spells.thunderous_roar:cast(player) then
+                    return true
+                end
+            end
         end
     end
 
@@ -1837,16 +1853,6 @@ local function Dps()
     if spells.demolish and spells.demolish:ready() and spells.demolish:castable(player) then
         if spells.demolish:cast(player) then
             return true
-        end
-    end
-
-
-
-    if spells.thunderous_roar and spells.thunderous_roar:ready() and spells.thunderous_roar:castable(player) then
-        if target.distanceto(player) <= 12 then
-            if spells.thunderous_roar:cast(player) then
-                return true
-            end
         end
     end
 
@@ -1984,6 +1990,20 @@ Aurora.Macro:RegisterCommand("hardcontrol", function()
         print("硬控: " .. (not current and "启用" or "禁用"))
     end
 end, "切换硬控打断状态")
+
+
+
+-- 【新增】挫志怒吼宏命令
+
+Aurora.Macro:RegisterCommand("shout", function()
+    if Aurora.Rotation.DemoralizingShoutToggle then
+        local current = Aurora.Rotation.DemoralizingShoutToggle:GetValue()
+
+        Aurora.Rotation.DemoralizingShoutToggle:SetValue(not current)
+
+        print("挫志怒吼: " .. (not current and "启用" or "禁用"))
+    end
+end, "切换挫志怒吼状态")
 
 
 
