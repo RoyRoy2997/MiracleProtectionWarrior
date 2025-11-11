@@ -22,7 +22,7 @@ local talents = Aurora.SpellHandler.Spellbooks.warrior["3"].MiracleWarrior.talen
 
 -- 版本信息
 
-local ROTATION_VERSION = "2.1.0"
+local ROTATION_VERSION = "2.1.2"
 
 
 
@@ -258,6 +258,20 @@ local highRiskSpells = {
 
 
 
+-- 【新增】石像形态触发的光环列表
+
+local stoneformAuras = {
+
+    [347716] = "开信刀", -- 请替换为实际需要石像形态解除的debuff ID
+
+
+
+    -- 添加更多需要石像形态解除的debuff ID
+
+}
+
+
+
 -- 【核心修复】直接的状态栏检查函数
 
 local function IsToggleEnabled(toggleName)
@@ -308,15 +322,11 @@ local function CheckRotationVersion()
 
         print("版本: " .. ROTATION_VERSION)
 
-        print("• 完全重写状态栏控制")
+        print("• 优化TTD判断逻辑")
 
-        print("• 简化配置读取逻辑")
+        print("• 使用团队感知的冷却技能判断")
 
-        print("• 添加宏命令控制")
-
-        print("• 新增挫志怒吼状态栏控制")
-
-        print("• 优化设置界面布局")
+        print("• 修复非战斗状态冷却技能逻辑")
 
         print("================================")
 
@@ -342,22 +352,16 @@ end
 
 
 
--- 【新增】自定义TTD函数 - 基于你提供的逻辑
+-- 【优化】使用rawttd的准确TTD函数
 
 local function UnitTimeToDie(unit, percentage)
-    -- percentage: 需要把怪物打到百分之多少的百分比
-
-    -- 比如需要把怪物干到0，就传入0，需要干到50%就传入50
+    percentage = percentage or 0
 
 
 
-    if not unit or not unit.exists then
+    if not unit or not unit.exists or not unit.alive then
         return 0
     end
-
-
-
-    percentage = percentage or 0
 
 
 
@@ -369,66 +373,80 @@ local function UnitTimeToDie(unit, percentage)
 
 
 
-    -- 计算还需要损失的血量
+    -- 使用Aurora框架内置的rawttd属性 - 对BOSS也返回准确值
 
-    local health = unit.health - (unit.healthmax / 100 * percentage)
+    local baseTTD = unit.rawttd or 0
 
-    if health < 1 then
-        return 0
+
+
+    -- 如果rawttd不可用，使用备用计算
+
+    if baseTTD <= 0 or baseTTD >= 999 then
+        -- 备用计算：基于当前血量和预估DPS
+
+        local healthRemaining = unit.health - (unit.healthmax * percentage / 100)
+
+        if healthRemaining <= 0 then
+            return 0
+        end
+
+
+
+        -- 估算DPS：基于玩家装备等级和战斗状态
+
+        local estimatedDPS = 0
+
+        if player.combat then
+            -- 基础DPS估算：装备等级 * 系数
+
+            local itemLevel = player.itemlevel or 500
+
+            estimatedDPS = itemLevel * 1.2 -- 调整系数
+
+
+
+            -- 根据专精调整
+
+            if player.spec == 3 then              -- 防护战士
+                estimatedDPS = estimatedDPS * 0.7 -- 坦克DPS较低
+            end
+
+
+
+            -- 根据敌人数量调整
+
+            local enemyCount = player.enemiesaround(8) or 1
+
+            if enemyCount > 1 then
+                estimatedDPS = estimatedDPS * (0.6 + 0.4 * enemyCount)
+            end
+        else
+            -- 非战斗状态返回0，不应该使用长冷却技能
+
+            return 0
+        end
+
+
+
+        baseTTD = healthRemaining / math.max(estimatedDPS, 1)
     end
 
 
 
-    -- 修正系数
+    -- 应用修正系数
 
-    local CDRS1 = 0.65 -- 血量修正
-
-    local CDRS2 = 1.5  -- 攻击力修正
+    local conservativeTTD = baseTTD * 1.15 -- 稍微保守一点
 
 
 
-    -- 玩家真实血量 * 血量系数修正
-
-    local prmh = player.healthmax * CDRS1
-
-
-
-    -- 计算40码内活着的治疗者数量
-
-    local active_heal_40y = 0
-
-    Aurora.friends:within(40):each(function(friend)
-        if friend.exists and friend.alive and friend.role == "HEALER" then
-            active_heal_40y = active_heal_40y + 1
-        end
-    end)
-
-
-
-    -- 团队有奶妈和坦克，需要把他们的攻击系数考虑进去，团队整体输出打75折
-
-    local pahn = active_heal_40y * 0.6
-
-
-
-    -- math.max，pahn不能低于自己一个人的输出系数
-
-    local loss = prmh * math.max(pahn, CDRS2)
-
-
-
-    -- 这个版本调整到了8秒干死同血量的怪
-
-    local gcd = Aurora.gcd() or 1.5
-
-    return math.min(math.max(health / loss * 6, gcd), 8888) -- 最大不能超过8888，最小不能低于GCD
+    return math.min(math.max(conservativeTTD, 0.5), 8888)
 end
 
 
 
--- 【新增】简化的TTD函数 - 用于常规冷却技能判断
+-- 【优化】基于团队综合状态的TTD判断
 
-local function ShouldUseLongCooldown()
+local function ShouldUseLongCooldownTeamAware()
     -- 从配置读取TTD设置
 
     local ttdEnabled = Aurora.Config:Read("MiracleWarrior.ttd_enabled")
@@ -445,27 +463,59 @@ local function ShouldUseLongCooldown()
 
 
 
-    -- 检查目标是否存在
+    -- 非战斗状态不应该使用长冷却技能
 
-    if target and target.exists and target.alive then
-        -- 使用自定义TTD函数计算剩余时间
-
-        local targetTTD = UnitTimeToDie(target, 0) -- 计算到0%血量的时间
-
-
-
-        -- 如果TTD大于阈值，可以使用长冷却技能
-
-        if targetTTD > ttdThreshold then
-            return true
-        else
-            return false
-        end
+    if not player.combat then
+        return false
     end
 
 
 
-    -- 没有目标时默认可以使用长冷却技能
+    -- 如果没有目标，检查是否有任何敌人
+
+    local hasValidTarget = false
+
+    local longestTTD = 0
+
+
+
+    -- 检查当前目标
+
+    if target and target.exists and target.alive then
+        hasValidTarget = true
+
+        longestTTD = UnitTimeToDie(target, 0)
+    end
+
+
+
+    -- 如果没有有效目标，检查附近的其他敌人
+
+    if not hasValidTarget then
+        Aurora.enemies:within(40):each(function(enemy)
+            if enemy.exists and enemy.alive then
+                hasValidTarget = true
+
+                local enemyTTD = UnitTimeToDie(enemy, 0)
+
+                if enemyTTD > longestTTD then
+                    longestTTD = enemyTTD
+                end
+            end
+        end)
+    end
+
+
+
+    -- 如果有有效目标且最长TTD大于阈值，可以使用长冷却技能
+
+    if hasValidTarget and longestTTD > ttdThreshold then
+        return true
+    end
+
+
+
+    -- 没有有效目标或TTD不足
 
     return false
 end
@@ -980,65 +1030,7 @@ end
 
 
 
--- 高危技能预警和减伤
-
-local function HighRiskSpellDefense()
-    local toggles = GetToggleState()
-
-    if not toggles.defensiveEnabled then
-        return false
-    end
-
-
-
-    -- 检查附近战斗中敌人
-
-    Aurora.enemies:within(30):each(function(enemy)
-        if enemy.exists and enemy.casting and enemy.combat then
-            local castId = enemy.castingspellid
-
-
-
-            -- 检查是否目标是我
-
-            if enemy.target and enemy.target.guid == player.guid then
-                -- 高危物理技能 - 使用盾墙
-
-                if highRiskSpells.physical[castId] then
-                    if spells.shield_wall and spells.shield_wall:ready() and spells.shield_wall:castable(player) then
-                        local spellName = highRiskSpells.physical[castId] or "Unknown"
-
-                        Aurora.alert("高危物理技能: " .. spellName .. "!", 871)
-
-                        return spells.shield_wall:cast(player)
-                    end
-                end
-
-
-
-                -- 高危法术技能 - 使用法术反射
-
-                if highRiskSpells.magical[castId] then
-                    if spells.spell_reflect and spells.spell_reflect:ready() and spells.spell_reflect:castable(player) then
-                        local spellName = highRiskSpells.magical[castId] or "Unknown"
-
-                        Aurora.alert("高危法术技能: " .. spellName .. "!", 23920)
-
-                        return spells.spell_reflect:cast(player)
-                    end
-                end
-            end
-        end
-    end)
-
-
-
-    return false
-end
-
-
-
--- 【强制检查】智能法术反射 - 直接使用状态栏控制
+-- 【整合】智能法术反射 - 统一在智能减伤中处理
 
 local function SmartSpellReflect()
     local toggles = GetToggleState()
@@ -1110,6 +1102,110 @@ local function SmartSpellReflect()
 
         return success
     end
+
+
+
+    return false
+end
+
+
+
+-- 【新增】智能石像形态
+
+local function SmartStoneform()
+    if not spells.Stoneform or not spells.Stoneform:ready() or not spells.Stoneform:castable(player) then
+        return false
+    end
+
+
+
+    -- 检查玩家是否有需要石像形态解除的debuff
+
+    for auraId, auraName in pairs(stoneformAuras) do
+        if player.aura(auraId) then
+            local success = spells.Stoneform:cast(player)
+
+            if success then
+                Aurora.alert("使用石像形态解除: " .. auraName, 20594)
+
+                return true
+            end
+        end
+    end
+
+
+
+    return false
+end
+
+
+
+-- 【整合】高危技能预警和减伤 - 整合法术反射和新增石像形态
+
+local function HighRiskSpellDefense()
+    local toggles = GetToggleState()
+
+    if not toggles.defensiveEnabled then
+        return false
+    end
+
+
+
+    -- 首先检查石像形态
+
+    if SmartStoneform() then
+        return true
+    end
+
+
+
+    -- 检查附近战斗中敌人
+
+    Aurora.enemies:within(30):each(function(enemy)
+        if enemy.exists and enemy.casting and enemy.combat then
+            local castId = enemy.castingspellid
+
+
+
+            -- 检查是否目标是我
+
+            if enemy.target and enemy.target.guid == player.guid then
+                -- 高危物理技能 - 使用盾墙
+
+                if highRiskSpells.physical[castId] then
+                    if spells.shield_wall and spells.shield_wall:ready() and spells.shield_wall:castable(player) then
+                        local spellName = highRiskSpells.physical[castId] or "Unknown"
+
+                        Aurora.alert("高危物理技能: " .. spellName .. "!", 871)
+
+                        return spells.shield_wall:cast(player)
+                    end
+                end
+
+
+
+                -- 高危法术技能 - 使用法术反射
+
+                if highRiskSpells.magical[castId] then
+                    if toggles.spellReflectEnabled then
+                        if spells.spell_reflect and spells.spell_reflect:ready() and spells.spell_reflect:castable(player) then
+                            local spellName = highRiskSpells.magical[castId] or "Unknown"
+
+                            Aurora.alert("高危法术技能: " .. spellName .. "!", 23920)
+
+                            local success = spells.spell_reflect:cast(player)
+
+                            if success then
+                                combatStats.reflects = combatStats.reflects + 1
+                            end
+
+                            return success
+                        end
+                    end
+                end
+            end
+        end
+    end)
 
 
 
@@ -1308,7 +1404,7 @@ local function SmartDemoralizingShout()
     local enemyCount = player.enemiesaround(8) or 0
 
     if enemyCount >= 1 then
-        if ShouldUseLongCooldown() then
+        if ShouldUseLongCooldownTeamAware() then
             spells.demoralizing_shout:cast(player)
 
             return true
@@ -1331,7 +1427,7 @@ local function SmartAvatar()
 
 
 
-    if ShouldUseLongCooldown() then
+    if ShouldUseLongCooldownTeamAware() then
         spells.avatar:cast(player)
 
         return true
@@ -1351,7 +1447,7 @@ local function SmartRavager()
         return false
     end
 
-    if ShouldUseLongCooldown() then
+    if ShouldUseLongCooldownTeamAware() then
         return spells.Ravager:cast(player)
     end
 end
@@ -1694,7 +1790,7 @@ local function Dps()
 
 
 
-    -- 最高优先级：高危技能防御
+    -- 最高优先级：高危技能防御（已整合法术反射和石像形态）
 
     if HighRiskSpellDefense() then
         return true
@@ -1748,7 +1844,7 @@ local function Dps()
 
 
         if spells.thunderous_roar and spells.thunderous_roar:ready() and spells.thunderous_roar:castable(player) then
-            if target.distanceto(player) <= 12 and ShouldUseLongCooldown() then
+            if target.distanceto(player) <= 12 and ShouldUseLongCooldownTeamAware() then
                 if spells.thunderous_roar:cast(player) then
                     return true
                 end
@@ -1774,15 +1870,7 @@ local function Dps()
 
 
 
-    -- 第八优先级：法术反射
-
-    if SmartSpellReflect() then
-        return true
-    end
-
-
-
-    -- 第九优先级：嘲讽保护队友
+    -- 第八优先级：嘲讽保护队友
 
     if Taunt() then
         return true
@@ -1790,7 +1878,7 @@ local function Dps()
 
 
 
-    -- 第十优先级：打断关键法术
+    -- 第九优先级：打断关键法术
 
     if Interrupts() then
         return true
@@ -1798,7 +1886,7 @@ local function Dps()
 
 
 
-    -- 第十一优先级：智能雷霆一击
+    -- 第十优先级：智能雷霆一击
 
     if SmartThunderClap() then
         return true
@@ -1806,7 +1894,7 @@ local function Dps()
 
 
 
-    -- 第十二优先级：智能盾猛
+    -- 第十一优先级：智能盾猛
 
     if SmartShieldSlam() then
         return true
@@ -1814,7 +1902,7 @@ local function Dps()
 
 
 
-    -- 第十三优先级：英勇投掷
+    -- 第十二优先级：英勇投掷
 
     if SmartHeroicThrow() then
         return true
@@ -1822,7 +1910,7 @@ local function Dps()
 
 
 
-    -- 第十四优先级：盾牌冲锋
+    -- 第十三优先级：盾牌冲锋
 
     if SmartShieldCharge() then
         return true
@@ -1871,7 +1959,7 @@ local function Dps()
 
 
     if spells.revenge and spells.revenge:ready() and spells.revenge:castable(player) then
-        if spells.revenge:cast(player) then
+        if spells.revenge:cast(player) and player.rage > 20 then
             return true
         end
     end
