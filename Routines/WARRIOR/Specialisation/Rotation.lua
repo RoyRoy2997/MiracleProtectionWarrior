@@ -2265,7 +2265,7 @@ end, "WARRIOR", 3, "MiracleWarrior")
 
 -- 检查循环版本
 
-CheckRotationVersion()
+ CheckRotationVersion()
 
 
 
