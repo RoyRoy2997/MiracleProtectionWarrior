@@ -762,8 +762,6 @@ end
 
 
 
--- 智能药水使用逻辑
-
 local function SmartPotionUse()
     local burstPotionMode = Aurora.Config:Read("MiracleWarrior.burst_potion_mode") or "cd"
 
@@ -771,16 +769,20 @@ local function SmartPotionUse()
 
 
 
-    -- 检查爆发药水
+    -- 爆发药水：添加战斗状态、物品存在性、数量检查
 
-    if burstPotionMode ~= "none" then
+    if burstPotionMode ~= "none" and player.combat then -- 仅战斗中使用
         local burstPotions = { potions.burst_3star, potions.burst_2star, potions.burst_1star }
 
 
 
         for _, potion in ipairs(burstPotions) do
-            if potion then
-                if potion:ready() and potion:usable(player) then
+            -- 关键检查：确保物品有效、存在于背包、数量>0、冷却结束、可用
+
+            if potion and potion:isknown() and potion:count() > 0 then
+                local usable, _ = potion:usable(player) -- 完整接收返回值
+
+                if potion:ready() and usable then
                     local shouldUse = false
 
 
@@ -797,6 +799,8 @@ local function SmartPotionUse()
                         local success = potion:use(player)
 
                         if success then
+                            Aurora.alert("使用爆发药水!", potion.spellid) -- 可选：添加提示
+
                             return true
                         end
                     end
@@ -807,19 +811,23 @@ local function SmartPotionUse()
 
 
 
-    -- 检查治疗药水
+    -- 治疗药水逻辑（同理完善）
 
-    if player.hp < healPotionHealth then
+    if player.combat and player.hp < healPotionHealth then
         local healPotions = { potions.heal_3star, potions.heal_2star, potions.heal_1star }
 
 
 
         for _, potion in ipairs(healPotions) do
-            if potion then
-                if potion:ready() and potion:usable(player) then
+            if potion and potion:isknown() and potion:count() > 0 then
+                local usable, _ = potion:usable(player)
+
+                if potion:ready() and usable then
                     local success = potion:use(player)
 
                     if success then
+                        Aurora.alert("使用治疗药水!", potion.spellid)
+
                         return true
                     end
                 end
@@ -831,6 +839,106 @@ local function SmartPotionUse()
 
     return false
 end
+
+
+
+-- -- 智能药水使用逻辑
+
+-- local function SmartPotionUse()
+
+--     local burstPotionMode = Aurora.Config:Read("MiracleWarrior.burst_potion_mode") or "cd"
+
+--     local healPotionHealth = Aurora.Config:Read("MiracleWarrior.heal_potion_health") or 30
+
+
+
+--     -- 检查爆发药水
+
+--     if burstPotionMode ~= "none" then
+
+--         local burstPotions = { potions.burst_3star, potions.burst_2star, potions.burst_1star }
+
+
+
+--         for _, potion in ipairs(burstPotions) do
+
+--             if potion then
+
+--                 if potion:ready() and potion:usable(player) then
+
+--                     local shouldUse = false
+
+
+
+--                     if burstPotionMode == "cd" then
+
+--                         shouldUse = true
+
+--                     elseif burstPotionMode == "avatar" and player.aura(107574) then
+
+--                         shouldUse = true
+
+--                     end
+
+
+
+--                     if shouldUse then
+
+--                         local success = potion:use(player)
+
+--                         if success then
+
+--                             return true
+
+--                         end
+
+--                     end
+
+--                 end
+
+--             end
+
+--         end
+
+--     end
+
+
+
+--     -- 检查治疗药水
+
+--     if player.hp < healPotionHealth then
+
+--         local healPotions = { potions.heal_3star, potions.heal_2star, potions.heal_1star }
+
+
+
+--         for _, potion in ipairs(healPotions) do
+
+--             if potion then
+
+--                 if potion:ready() and potion:usable(player) then
+
+--                     local success = potion:use(player)
+
+--                     if success then
+
+--                         return true
+
+--                     end
+
+--                 end
+
+--             end
+
+--         end
+
+--     end
+
+
+
+--     return false
+
+-- end
 
 
 
@@ -1543,11 +1651,13 @@ end
 -- 【强制检查】增强减伤技能链 - 直接使用状态栏控制
 
 local function EnhancedDefensiveChain()
-    local toggles = GetToggleState()
+    -- local toggles = GetToggleState()
 
-    if not toggles.defensiveEnabled then
-        return false
-    end
+    -- if not toggles.defensiveEnabled then
+
+    --     return false
+
+    -- end
 
 
 
@@ -1745,12 +1855,14 @@ end
 
 
 
--- 自动战斗怒吼
+-- 智能战斗怒吼（新增队友buff检查逻辑）
 
 local function SmartBattleShout()
     local battleShoutEnabled = Aurora.Config:Read("MiracleWarrior.battle_shout_enabled") or true
 
 
+
+    -- 配置关闭则直接返回
 
     if not battleShoutEnabled then
         return false
@@ -1758,19 +1870,57 @@ local function SmartBattleShout()
 
 
 
-    if not spells.Battle_Shout or not spells.Battle_Shout:ready() then
+    -- 检查技能是否可用
+
+    if not spells.Battle_Shout or not spells.Battle_Shout:ready() or not spells.Battle_Shout:castable(player) then
         return false
     end
 
 
 
-    if player.combat then
-        return false
+    -- 战斗怒吼aura ID（保持原有正确配置）
+
+    local BATTLE_SHOUT_AURA = 6673
+
+
+
+    -- 1. 队伍/团队场景：检查所有成员是否缺少buff
+
+    if player.group or player.raid then
+        local missingBuffMember = false
+
+
+
+        -- 遍历完整队伍（包含玩家自己，Aurora.fgroup = 含玩家的全组列表）
+
+        Aurora.fgroup:each(function(member)
+            -- 跳过不存在、已死亡的成员
+
+            if member.exists and member.alive then
+                -- 检查成员是否没有战斗怒吼aura
+
+                if not member.aura(BATTLE_SHOUT_AURA) then
+                    missingBuffMember = true
+
+                    return true -- 中断遍历，无需检查其他成员
+                end
+            end
+        end)
+
+
+
+        -- 存在缺少buff的成员，释放技能
+
+        if missingBuffMember then
+            return spells.Battle_Shout:cast(player)
+        end
     end
 
 
 
-    if not player.aura(6673) then
+    -- 2. 单人场景：保留原有逻辑（非战斗状态+自身无buff时释放）
+
+    if not player.combat and not player.aura(BATTLE_SHOUT_AURA) then
         return spells.Battle_Shout:cast(player)
     end
 
