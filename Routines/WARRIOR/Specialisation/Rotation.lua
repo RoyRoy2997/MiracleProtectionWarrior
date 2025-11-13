@@ -762,6 +762,14 @@ end
 
 
 
+
+
+
+
+
+
+-- 智能药水使用逻辑
+
 local function SmartPotionUse()
     local burstPotionMode = Aurora.Config:Read("MiracleWarrior.burst_potion_mode") or "cd"
 
@@ -769,20 +777,16 @@ local function SmartPotionUse()
 
 
 
-    -- 爆发药水：添加战斗状态、物品存在性、数量检查
+    -- 检查爆发药水
 
-    if burstPotionMode ~= "none" and player.combat then -- 仅战斗中使用
+    if burstPotionMode ~= "none" then
         local burstPotions = { potions.burst_3star, potions.burst_2star, potions.burst_1star }
 
 
 
         for _, potion in ipairs(burstPotions) do
-            -- 关键检查：确保物品有效、存在于背包、数量>0、冷却结束、可用
-
-            if potion and potion:isknown() and potion:count() > 0 then
-                local usable, _ = potion:usable(player) -- 完整接收返回值
-
-                if potion:ready() and usable then
+            if potion then
+                if potion:ready() and potion:usable(player) and potion:count() > 0 then
                     local shouldUse = false
 
 
@@ -796,11 +800,7 @@ local function SmartPotionUse()
 
 
                     if shouldUse then
-                        local success = potion:use(player)
-
-                        if success then
-                            Aurora.alert("使用爆发药水!", potion.spellid) -- 可选：添加提示
-
+                        if potion:use(player) then
                             return true
                         end
                     end
@@ -811,23 +811,17 @@ local function SmartPotionUse()
 
 
 
-    -- 治疗药水逻辑（同理完善）
+    -- 检查治疗药水
 
-    if player.combat and player.hp < healPotionHealth then
+    if player.hp < healPotionHealth then
         local healPotions = { potions.heal_3star, potions.heal_2star, potions.heal_1star }
 
 
 
         for _, potion in ipairs(healPotions) do
-            if potion and potion:isknown() and potion:count() > 0 then
-                local usable, _ = potion:usable(player)
-
-                if potion:ready() and usable then
-                    local success = potion:use(player)
-
-                    if success then
-                        Aurora.alert("使用治疗药水!", potion.spellid)
-
+            if potion then
+                if potion:ready() and potion:usable(player) and potion:count() > 0 then
+                    if potion:use(player) then
                         return true
                     end
                 end
@@ -839,106 +833,6 @@ local function SmartPotionUse()
 
     return false
 end
-
-
-
--- -- 智能药水使用逻辑
-
--- local function SmartPotionUse()
-
---     local burstPotionMode = Aurora.Config:Read("MiracleWarrior.burst_potion_mode") or "cd"
-
---     local healPotionHealth = Aurora.Config:Read("MiracleWarrior.heal_potion_health") or 30
-
-
-
---     -- 检查爆发药水
-
---     if burstPotionMode ~= "none" then
-
---         local burstPotions = { potions.burst_3star, potions.burst_2star, potions.burst_1star }
-
-
-
---         for _, potion in ipairs(burstPotions) do
-
---             if potion then
-
---                 if potion:ready() and potion:usable(player) then
-
---                     local shouldUse = false
-
-
-
---                     if burstPotionMode == "cd" then
-
---                         shouldUse = true
-
---                     elseif burstPotionMode == "avatar" and player.aura(107574) then
-
---                         shouldUse = true
-
---                     end
-
-
-
---                     if shouldUse then
-
---                         local success = potion:use(player)
-
---                         if success then
-
---                             return true
-
---                         end
-
---                     end
-
---                 end
-
---             end
-
---         end
-
---     end
-
-
-
---     -- 检查治疗药水
-
---     if player.hp < healPotionHealth then
-
---         local healPotions = { potions.heal_3star, potions.heal_2star, potions.heal_1star }
-
-
-
---         for _, potion in ipairs(healPotions) do
-
---             if potion then
-
---                 if potion:ready() and potion:usable(player) then
-
---                     local success = potion:use(player)
-
---                     if success then
-
---                         return true
-
---                     end
-
---                 end
-
---             end
-
---         end
-
---     end
-
-
-
---     return false
-
--- end
 
 
 
@@ -1940,19 +1834,23 @@ local function Dps()
 
 
 
-    -- 最高优先级：高危技能防御（已整合法术反射和石像形态）
+
+
+    -- 第一优先级：减伤链
+
+    if EnhancedDefensiveChain() then
+        return true
+    end
+
+
+
+    -- 第二优先级：高危技能防御（已整合法术反射和石像形态）
 
     if HighRiskSpellDefense() then
         return true
     end
 
 
-
-    -- 第二优先级：减伤链
-
-    if EnhancedDefensiveChain() then
-        return true
-    end
 
 
 
@@ -2265,7 +2163,7 @@ end, "WARRIOR", 3, "MiracleWarrior")
 
 -- 检查循环版本
 
- CheckRotationVersion()
+CheckRotationVersion()
 
 
 
