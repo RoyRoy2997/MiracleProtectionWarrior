@@ -86,7 +86,9 @@ local potions = {
 
     heal_2star = Aurora.ItemHandler.NewItem(244838),  -- 焕生治疗药水2星
 
-    heal_1star = Aurora.ItemHandler.NewItem(244835)   -- 焕生治疗药水1星
+    heal_1star = Aurora.ItemHandler.NewItem(244835),  -- 焕生治疗药水1星
+
+    heal_Tang = Aurora.ItemHandler.NewItem(5512)      -- 治疗石
 
 }
 
@@ -814,7 +816,7 @@ local function SmartPotionUse()
     -- 检查治疗药水
 
     if player.hp < healPotionHealth then
-        local healPotions = { potions.heal_3star, potions.heal_2star, potions.heal_1star }
+        local healPotions = { potions.heal_3star, potions.heal_2star, potions.heal_1star, potions.heal_Tang }
 
 
 
@@ -846,6 +848,8 @@ local lastInterruptTime = 0
 
 -- 智能打断系统
 
+-- 智能打断系统 - 修复版：拳击现在也会扫描附近所有敌人
+
 local function SmartInterrupts()
     local toggles = GetToggleState()
 
@@ -875,7 +879,7 @@ local function SmartInterrupts()
 
 
 
-    -- 检查焦点目标
+    -- 优先级1：检查焦点目标
 
     local focusTarget = Aurora.UnitManager:Get("focus")
 
@@ -897,7 +901,47 @@ local function SmartInterrupts()
 
 
 
-    -- 检查当前目标
+    -- 优先级2：扫描附近所有敌人（与硬控打断相同的逻辑）
+
+    local enemiesCastingDangerous = {}
+
+
+
+    -- 收集附近正在施放危险技能的敌人
+
+    Aurora.enemies:within(15):each(function(enemy)
+        if enemy.exists and enemy.casting and enemy.castinginterruptible and enemy.combat then
+            local castId = enemy.castingspellid
+
+            if interruptList[castId] then
+                table.insert(enemiesCastingDangerous, enemy)
+            end
+        end
+    end)
+
+
+
+    -- 如果有符合条件的敌人，使用拳击打断第一个
+
+    if #enemiesCastingDangerous >= 1 then
+        local firstDangerousEnemy = enemiesCastingDangerous[1]
+
+        if firstDangerousEnemy and spells.pummel and spells.pummel:ready() and spells.pummel:castable(firstDangerousEnemy) then
+            local success = spells.pummel:cast(firstDangerousEnemy)
+
+            if success then
+                lastInterruptTime = currentTime
+
+                combatStats.interrupts = combatStats.interrupts + 1
+
+                return true
+            end
+        end
+    end
+
+
+
+    -- 优先级3：检查当前目标（作为备选）
 
     if target and target.exists and target.casting and target.castinginterruptible then
         local castId = target.castingspellid
@@ -919,6 +963,102 @@ local function SmartInterrupts()
 
     return false
 end
+
+-- local function SmartInterrupts()
+
+--     local toggles = GetToggleState()
+
+--     -- 打断功能现在由状态栏控制
+
+--     if not toggles.hardControlInterruptEnabled then
+
+--         return false
+
+--     end
+
+
+
+--     local currentTime = GetTime()
+
+
+
+--     -- 防止连续打断
+
+--     if currentTime - lastInterruptTime < 1 then
+
+--         return false
+
+--     end
+
+
+
+--     -- 使用Aurora框架维护的打断列表
+
+--     local interruptList = Aurora.Lists.InterruptSpells or {}
+
+
+
+--     -- 检查焦点目标
+
+--     local focusTarget = Aurora.UnitManager:Get("focus")
+
+--     if focusTarget and focusTarget.exists and focusTarget.casting and focusTarget.castinginterruptible then
+
+--         local castId = focusTarget.castingspellid
+
+--         if interruptList[castId] then
+
+--             if spells.pummel and spells.pummel:ready() and spells.pummel:castable(focusTarget) then
+
+--                 if spells.pummel:cast(focusTarget) then
+
+--                     lastInterruptTime = currentTime
+
+--                     combatStats.interrupts = combatStats.interrupts + 1
+
+--                     return true
+
+--                 end
+
+--             end
+
+--         end
+
+--     end
+
+
+
+--     -- 检查当前目标
+
+--     if target and target.exists and target.casting and target.castinginterruptible then
+
+--         local castId = target.castingspellid
+
+--         if interruptList[castId] then
+
+--             if spells.pummel and spells.pummel:ready() and spells.pummel:castable(target) then
+
+--                 if spells.pummel:cast(target) then
+
+--                     lastInterruptTime = currentTime
+
+--                     combatStats.interrupts = combatStats.interrupts + 1
+
+--                     return true
+
+--                 end
+
+--             end
+
+--         end
+
+--     end
+
+
+
+--     return false
+
+-- end
 
 
 
@@ -1473,7 +1613,7 @@ local function SmartShieldCharge()
 
 
 
-    if target.distanceto(player) <= 4 then
+    if target.distanceto(player) <= 5 then
         return spells.shield_charge:cast(target)
     end
 
@@ -1934,9 +2074,19 @@ local function Dps()
 
 
 
+
+
     -- 第十优先级：智能雷霆一击
 
     if SmartThunderClap() then
+        return true
+    end
+
+
+
+    -- 第十三优先级：盾牌冲锋
+
+    if SmartShieldCharge() then
         return true
     end
 
@@ -1957,12 +2107,6 @@ local function Dps()
     end
 
 
-
-    -- 第十三优先级：盾牌冲锋
-
-    if SmartShieldCharge() then
-        return true
-    end
 
 
 
@@ -2007,8 +2151,12 @@ local function Dps()
 
 
     if spells.revenge and spells.revenge:ready() and spells.revenge:castable(player) then
-        if spells.revenge:cast(player) and player.rage > 20 then
-            return true
+        if spells.revenge:timeSinceLastCast() < 3 then
+            return false
+        elseif player.rage > 20 then
+            if spells.revenge:cast(player) then
+                return true
+            end
         end
     end
 

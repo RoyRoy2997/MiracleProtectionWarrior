@@ -336,10 +336,10 @@ local function CreateInterface()
         :Slider({
             text = T("rage_threshold"),
             key = "MiracleWarrior.rage_threshold",
-            min = 40,
+            min = 10,
             max = 100,
             step = 5,
-            default = 60,
+            default = 40,
             tooltip = T("rage_threshold_tooltip")
         })
         :Slider({
