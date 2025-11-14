@@ -36,15 +36,17 @@ Aurora.SpellHandler.PopulateSpellbook({
 
         --防御技能
 
-        shield_block     = NewSpell(2565),   -- 盾牌格挡
+        shield_block     = NewSpell(2565),     -- 盾牌格挡
 
-        shield_wall      = NewSpell(871),    -- 盾墙
+        shield_wall      = NewSpell(871),      -- 盾墙
 
-        ignore_pain      = NewSpell(190456), -- 无视苦痛
+        ignore_pain      = NewSpell(190456),   -- 无视苦痛
 
-        Defensive_Stance = NewSpell(386208), -- 防御姿态
+        Defensive_Stance = NewSpell(386208),   -- 防御姿态
 
-        Stoneform        = NewSpell(20594),  -- 石像形态
+        Battle_Stance    = NewSpell(386164),   -- 战斗姿态
+
+        Stoneform        = NewSpell(20594),    -- 石像形态
 
 
 
@@ -52,45 +54,45 @@ Aurora.SpellHandler.PopulateSpellbook({
 
         --输出技能
 
-        Champions_spear = NewSpell(376079, { radius = 8, }), -- 冠军之矛
+        Champions_spear = NewSpell(376079, { radius = 8, }),   -- 冠军之矛
 
-        demolish        = NewSpell(436358),                  -- 摧毁
+        demolish        = NewSpell(436358),                    -- 摧毁
 
-        thunderous_roar = NewSpell(384318),                  -- 雷霆咆哮
+        thunderous_roar = NewSpell(384318),                    -- 雷霆咆哮
 
-        thunder_clap    = NewSpell(6343),                    -- 雷霆一击
+        thunder_clap    = NewSpell(6343),                      -- 雷霆一击
 
-        thunder_blast   = NewSpell(435222),                  -- 雷霆轰击
+        thunder_blast   = NewSpell(435222),                    -- 雷霆轰击
 
 
 
         -- 新增技能
 
-        revenge       = NewSpell(6572),   -- 复仇
+        revenge       = NewSpell(6572),       -- 复仇
 
-        execute       = NewSpell(163201), -- 处决
+        execute       = NewSpell(163201),     -- 处决
 
-        last_stand    = NewSpell(12975),  -- 破釜沉舟
+        last_stand    = NewSpell(12975),      -- 破釜沉舟
 
-        spell_reflect = NewSpell(23920),  -- 法术反射
+        spell_reflect = NewSpell(23920),      -- 法术反射
 
-        heroic_throw  = NewSpell(57755),  -- 英勇投掷
+        heroic_throw  = NewSpell(57755),      -- 英勇投掷
 
-        victory_rush  = NewSpell(202168), -- 乘胜追击
+        victory_rush  = NewSpell(202168),     -- 乘胜追击
 
-        Battle_Shout  = NewSpell(6673),   -- 战斗怒吼
+        Battle_Shout  = NewSpell(6673),       -- 战斗怒吼
 
 
 
         -- 打断技能
 
-        pummel         = NewSpell(6552),   -- 拳击
+        pummel         = NewSpell(6552),      -- 拳击
 
-        storm_bolt     = NewSpell(107570), -- 风暴之锤
+        storm_bolt     = NewSpell(107570),    -- 风暴之锤
 
-        shockwave      = NewSpell(46968),  -- 震荡波
+        shockwave      = NewSpell(46968),     -- 震荡波
 
-        arcane_torrent = NewSpell(386071), -- 瓦解怒吼
+        arcane_torrent = NewSpell(386071),    -- 瓦解怒吼
 
 
 

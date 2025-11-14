@@ -305,7 +305,9 @@ local function GetToggleState()
 
         hardControlInterruptEnabled = IsToggleEnabled("HardControlInterruptToggle"),
 
-        demoralizingShoutEnabled = IsToggleEnabled("DemoralizingShoutToggle") -- 新增挫志怒吼状态栏控制
+        demoralizingShoutEnabled = IsToggleEnabled("DemoralizingShoutToggle"), -- 新增挫志怒吼状态栏控制
+
+        smartStanceEnabled = IsToggleEnabled("SmartStanceToggle")              -- 新增智能姿态状态栏控制
 
     }
 end
@@ -1376,6 +1378,60 @@ end
 
 
 
+-- 【新增】智能姿态管理
+
+local function SmartStanceManagement()
+    local toggles = GetToggleState()
+
+
+
+    -- 如果智能姿态未启用，直接返回
+
+    if not toggles.smartStanceEnabled then
+        return false
+    end
+
+
+
+    -- 检查战斗中且有天神下凡buff时切换到战斗姿态
+
+    if player.combat and player.aura(107574) then
+        if spells.Battle_Stance and spells.Battle_Stance:ready() and spells.Battle_Stance:castable(player) then
+            -- 确保当前不是战斗姿态
+
+            if not player.aura(386164) then
+                local success = spells.Battle_Stance:cast(player)
+
+                if success then
+                    Aurora.alert("天神下凡 - 切换到战斗姿态", 386164)
+
+                    return true
+                end
+            end
+        end
+    end
+
+
+
+    -- 没有天神下凡buff时，确保在防御姿态
+
+    if not player.aura(107574) and not player.aura(386208) then
+        if spells.Defensive_Stance and spells.Defensive_Stance:ready() and spells.Defensive_Stance:castable(player) then
+            local success = spells.Defensive_Stance:cast(player)
+
+            if success then
+                return true
+            end
+        end
+    end
+
+
+
+    return false
+end
+
+
+
 -- 【强制检查】智能乘胜追击 - 直接使用状态栏控制
 
 local function SmartVictoryRush()
@@ -2040,6 +2096,12 @@ local function Dps()
         end
     end
 
+    --衍生：智能姿态
+
+    if SmartStanceManagement() then
+        return true
+    end
+
 
 
     -- 第六优先级：集结呐喊
@@ -2180,11 +2242,25 @@ local function Ooc()
         SmartBattleShout()
     end
 
+    -- 【修改】在非战斗状态也检查智能姿态
 
+    local toggles = GetToggleState()
 
-    if not player.aura(386208) then
-        if spells.Defensive_Stance and spells.Defensive_Stance:ready() and spells.Defensive_Stance:castable(player) then
-            spells.Defensive_Stance:cast(player)
+    if toggles.smartStanceEnabled then
+        -- 非战斗状态下确保在防御姿态
+
+        if not player.aura(386208) then
+            if spells.Defensive_Stance and spells.Defensive_Stance:ready() and spells.Defensive_Stance:castable(player) then
+                spells.Defensive_Stance:cast(player)
+            end
+        end
+    else
+        -- 如果智能姿态未启用，使用原来的逻辑
+
+        if not player.aura(386208) then
+            if spells.Defensive_Stance and spells.Defensive_Stance:ready() and spells.Defensive_Stance:castable(player) then
+                spells.Defensive_Stance:cast(player)
+            end
         end
     end
 end
@@ -2288,6 +2364,20 @@ Aurora.Macro:RegisterCommand("shout", function()
         print("挫志怒吼: " .. (not current and "启用" or "禁用"))
     end
 end, "切换挫志怒吼状态")
+
+
+
+-- 【新增】智能姿态宏命令
+
+Aurora.Macro:RegisterCommand("smartstance", function()
+    if Aurora.Rotation.SmartStanceToggle then
+        local current = Aurora.Rotation.SmartStanceToggle:GetValue()
+
+        Aurora.Rotation.SmartStanceToggle:SetValue(not current)
+
+        print("智能姿态: " .. (not current and "启用" or "禁用"))
+    end
+end, "切换智能姿态状态")
 
 
 
