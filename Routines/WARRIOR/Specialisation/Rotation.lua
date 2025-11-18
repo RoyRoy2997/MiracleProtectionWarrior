@@ -28,22 +28,6 @@ local ROTATION_VERSION = "2.1.2"
 
 
 
--- 初始化TTD系统
-
-local function InitializeTTDSystem()
-    ttdCache = {}
-
-    lastHealthValues = {}
-
-    lastHealthTimes = {}
-
-    lastCleanupTime = GetTime()
-
-    print("TTD系统初始化完成")
-end
-
-
-
 -- 战斗数据统计
 
 local combatStats = {
@@ -172,15 +156,7 @@ local ragingBlowReady = false
 
 
 
--- 【新增】TTD缓存清理系统
 
-local ttdCache = {}
-
-local lastHealthValues = {}
-
-local lastHealthTimes = {}
-
-local lastCleanupTime = 0
 
 
 
@@ -388,356 +364,18 @@ end
 
 
 
--- -- 【优化】使用rawttd的准确TTD函数
-
--- local function UnitTimeToDie(unit, percentage)
-
---     percentage = percentage or 0
-
-
-
---     if not unit or not unit.exists or not unit.alive then
-
---         return 0
-
---     end
-
-
-
---     -- 如果是玩家或训练假人，返回很大的值
-
---     if unit.player or unit.isdummy then
-
---         return 8888
-
---     end
-
-
-
---     -- 使用Aurora框架内置的rawttd属性 - 对BOSS也返回准确值
-
---     local baseTTD = unit.rawttd or 0
-
-
-
---     -- 如果rawttd不可用，使用备用计算
-
---     if baseTTD <= 0 or baseTTD >= 999 then
-
---         -- 备用计算：基于当前血量和预估DPS
-
---         local healthRemaining = unit.health - (unit.healthmax * percentage / 100)
-
---         if healthRemaining <= 0 then
-
---             return 0
-
---         end
-
-
-
---         -- 估算DPS：基于玩家装备等级和战斗状态
-
---         local estimatedDPS = 0
-
---         if player.combat then
-
---             -- 基础DPS估算：装备等级 * 系数
-
---             local itemLevel = player.itemlevel or 500
-
---             estimatedDPS = itemLevel * 1.2 -- 调整系数
-
-
-
---             -- 根据专精调整
-
---             if player.spec == 3 then              -- 防护战士
-
---                 estimatedDPS = estimatedDPS * 0.7 -- 坦克DPS较低
-
---             end
-
-
-
---             -- 根据敌人数量调整
-
---             local enemyCount = player.enemiesaround(8) or 1
-
---             if enemyCount > 1 then
-
---                 estimatedDPS = estimatedDPS * (0.6 + 0.4 * enemyCount)
-
---             end
-
---         else
-
---             -- 非战斗状态返回0，不应该使用长冷却技能
-
---             return 0
-
---         end
-
-
-
---         baseTTD = healthRemaining / math.max(estimatedDPS, 1)
-
---     end
-
-
-
---     -- 应用修正系数
-
---     local conservativeTTD = baseTTD * 1.15 -- 稍微保守一点
-
-
-
---     return math.min(math.max(conservativeTTD, 0.5), 8888)
-
--- end
-
-
-
--- -- 【优化】基于团队综合状态的TTD判断
-
--- local function ShouldUseLongCooldownTeamAware()
-
---     -- 从配置读取TTD设置
-
---     local ttdEnabled = Aurora.Config:Read("MiracleWarrior.ttd_enabled")
-
---     local ttdThreshold = Aurora.Config:Read("MiracleWarrior.ttd_threshold") or 15
-
-
-
---     -- 如果TTD判断被禁用，直接返回true
-
---     if ttdEnabled == false then
-
---         return true
-
---     end
-
-
-
---     -- 非战斗状态不应该使用长冷却技能
-
---     if not player.combat then
-
---         return false
-
---     end
-
-
-
---     -- 如果没有目标，检查是否有任何敌人
-
---     local hasValidTarget = false
-
---     local longestTTD = 0
-
-
-
---     -- 检查当前目标
-
---     if target and target.exists and target.alive then
-
---         hasValidTarget = true
-
---         longestTTD = UnitTimeToDie(target, 0)
-
---     end
-
-
-
---     -- 如果没有有效目标，检查附近的其他敌人
-
---     if not hasValidTarget then
-
---         Aurora.enemies:within(40):each(function(enemy)
-
---             if enemy.exists and enemy.alive then
-
---                 hasValidTarget = true
-
---                 local enemyTTD = UnitTimeToDie(enemy, 0)
-
---                 if enemyTTD > longestTTD then
-
---                     longestTTD = enemyTTD
-
---                 end
-
---             end
-
---         end)
-
---     end
-
-
-
---     -- 如果有有效目标且最长TTD大于阈值，可以使用长冷却技能
-
---     if hasValidTarget and longestTTD > ttdThreshold then
-
---         return true
-
---     end
-
-
-
---     -- 没有有效目标或TTD不足
-
---     return false
-
--- end
-
-
-
--- 【完全重写】可靠的TTD计算系统 - 不使用Aurora.rawttd
-
-local ttdCache = {}
-
-local lastHealthValues = {}
-
-local lastHealthTimes = {}
-
-
-
--- 【修复】可靠的TTD计算系统 - 为训练假人提供合理的TTD
-
-local function ReliableUnitTimeToDie(unit, percentage)
-    percentage = percentage or 0
-
-
-
-    if not unit or not unit.exists or not unit.alive then
-        return 0
-    end
-
-
-
-    -- 如果是训练假人，返回一个合理的TTD值（30秒），让长冷却技能可以释放
-
-    if unit.isdummy then
-        return 30 -- 30秒，足够长冷却技能使用
-    end
-
-
-
-    -- 如果是玩家，返回很大的值
-
-    if unit.player then
-        return 8888
-    end
-
-
-
-    local currentTime = GetTime()
-
-    local guid = unit.guid
-
-    local currentHealth = unit.health
-
-    local maxHealth = unit.healthmax
-
-
-
-    -- 初始化缓存
-
-    if not lastHealthValues[guid] then
-        lastHealthValues[guid] = currentHealth
-
-        lastHealthTimes[guid] = currentTime
-
-        ttdCache[guid] = 8888 -- 初始值设为很大
-
-        return 8888
-    end
-
-
-
-    local lastHealth = lastHealthValues[guid]
-
-    local lastTime = lastHealthTimes[guid]
-
-    local timeDiff = currentTime - lastTime
-
-
-
-    -- 只有当时间差足够大且血量有变化时才重新计算TTD
-
-    if timeDiff > 0.5 and currentHealth ~= lastHealth then
-        local healthDiff = lastHealth - currentHealth
-
-
-
-        -- 只有在血量确实在减少时才计算TTD
-
-        if healthDiff > 0 then
-            local dps = healthDiff / timeDiff
-
-            local healthRemaining = currentHealth - (maxHealth * percentage / 100)
-
-
-
-            if dps > 0 and healthRemaining > 0 then
-                local newTTD = healthRemaining / dps
-
-
-
-                -- 应用平滑处理：新TTD = 0.7 * 旧TTD + 0.3 * 新计算TTD
-
-                if ttdCache[guid] and ttdCache[guid] < 8888 then
-                    ttdCache[guid] = ttdCache[guid] * 0.7 + newTTD * 0.3
-                else
-                    ttdCache[guid] = newTTD
-                end
-
-
-
-                -- 限制TTD在合理范围内（0.5秒到120秒）
-
-                ttdCache[guid] = math.max(0.5, math.min(ttdCache[guid], 120))
-            end
-        end
-
-
-
-        -- 更新缓存
-
-        lastHealthValues[guid] = currentHealth
-
-        lastHealthTimes[guid] = currentTime
-    end
-
-
-
-    -- 如果长时间没有血量变化，逐渐增加TTD（模拟目标可能停止受到伤害）
-
-    if timeDiff > 3 and ttdCache[guid] < 8888 then
-        ttdCache[guid] = math.min(ttdCache[guid] + timeDiff * 0.5, 120)
-    end
-
-
-
-    return ttdCache[guid] or 8888
-end
-
-
-
--- 【优化】基于团队综合状态的TTD判断 - 使用新的可靠TTD计算
+-- 【核心】基于Aurora.grouprawttd()的TTD判断（关联页面设置）
 
 local function ShouldUseLongCooldownTeamAware()
-    -- 从配置读取TTD设置
+    -- 1. 从页面设置读取配置（用户可在GUI中修改这些值）
 
-    local ttdEnabled = Aurora.Config:Read("MiracleWarrior.ttd_enabled")
+    local ttdEnabled = Aurora.Config:Read("MiracleWarrior.ttd_enabled")     -- 是否启用TTD判断
 
-    local ttdThreshold = Aurora.Config:Read("MiracleWarrior.ttd_threshold") or 15
+    local ttdThreshold = Aurora.Config:Read("MiracleWarrior.ttd_threshold") -- TTD阈值（秒）
 
 
 
-    -- 如果TTD判断被禁用，直接返回true
+    -- 2. 基础校验：TTD判断禁用 → 直接允许使用长冷却技能
 
     if ttdEnabled == false then
         return true
@@ -745,7 +383,7 @@ local function ShouldUseLongCooldownTeamAware()
 
 
 
-    -- 非战斗状态不应该使用长冷却技能
+    -- 3. 非战斗状态 → 不允许使用长冷却技能（避免空放）
 
     if not player.combat then
         return false
@@ -753,103 +391,37 @@ local function ShouldUseLongCooldownTeamAware()
 
 
 
-    -- 检查当前目标
+    -- 4. 调用Aurora原生API：获取40码内敌人平均TTD（训练假人返回999，文档中明确说明）
 
-    local longestTTD = 0
+    -- 兼容：若框架用 "groupttd()" 命名（文档中主要API名），自动 fallback
 
-    local validTargets = 0
+    local avgTTD = Aurora.grouprawttd and Aurora.grouprawttd() or Aurora.groupttd()
 
 
 
-    -- 检查当前目标
+    -- 5. API异常处理：若返回值无效（如≤0），默认按“可使用”处理（避免误判）
 
-    if target and target.exists and target.alive then
-        local targetTTD = ReliableUnitTimeToDie(target, 0)
-
-        if targetTTD > 0 and targetTTD < 8888 then
-            longestTTD = math.max(longestTTD, targetTTD)
-
-            validTargets = validTargets + 1
-        end
+    if not avgTTD or avgTTD <= 0 then
+        avgTTD = 999 -- 异常时按“敌人存活很久”处理
     end
 
 
 
-    -- 检查附近的其他敌人
+    -- 6. 调试信息（可选，用户可注释：打印当前平均TTD和阈值，验证是否生效）
 
-    Aurora.enemies:within(40):each(function(enemy)
-        if enemy.exists and enemy.alive then
-            local enemyTTD = ReliableUnitTimeToDie(enemy, 0)
+    -- if Aurora.Config:Read("MiracleWarrior.debug_ttd") then
 
-            if enemyTTD > 0 and enemyTTD < 8888 then
-                longestTTD = math.max(longestTTD, enemyTTD)
+    --     print(string.format("[TTD判断] 40码内平均TTD：%.1f秒，阈值：%.1f秒", avgTTD, ttdThreshold))
 
-                validTargets = validTargets + 1
-            end
-        end
-    end)
+    -- end
+
+    print(avgTTD, ttdThreshold)
 
 
 
-    -- 如果有有效目标且最长TTD大于阈值，可以使用长冷却技能
+    -- 7. 核心判断：平均TTD > 阈值 → 允许使用长冷却技能
 
-    if validTargets > 0 and longestTTD > ttdThreshold then
-        return true
-    end
-
-    print(longestTTD)
-
-    -- 没有有效目标或TTD不足
-
-    return false
-end
-
-
-
--- 清理TTD缓存
-
-local function CleanTTDCache()
-    local currentTime = GetTime()
-
-
-
-    -- 每30秒清理一次缓存，避免内存泄漏
-
-    if currentTime - lastCleanupTime < 30 then
-        return
-    end
-
-
-
-    lastCleanupTime = currentTime
-
-    local maxCacheAge = 300 -- 5分钟
-
-
-
-    local removedCount = 0
-
-
-
-    for guid, lastTime in pairs(lastHealthTimes) do
-        if currentTime - lastTime > maxCacheAge then
-            lastHealthValues[guid] = nil
-
-            lastHealthTimes[guid] = nil
-
-            ttdCache[guid] = nil
-
-            removedCount = removedCount + 1
-        end
-    end
-
-
-
-    -- 可选：调试信息
-
-    if Aurora.Config:Read("MiracleWarrior.debug_ttd") and removedCount > 0 then
-        print(string.format("TTD缓存清理: 移除了 %d 个过期单位", removedCount))
-    end
+    return avgTTD > ttdThreshold
 end
 
 
@@ -2167,10 +1739,6 @@ end
 -- 战斗数据统计
 
 local function RecordCombatStats()
-    -- 定期清理TTD缓存
-
-    CleanTTDCache()
-
     if not player.combat then
         if combatStats.startTime > 0 then
             local combatDuration = GetTime() - combatStats.startTime
@@ -2570,10 +2138,6 @@ local function Ooc()
 
 
 
-    -- 定期清理TTD缓存
-
-    CleanTTDCache()
-
 
 
     if not player.combat then
@@ -2742,10 +2306,6 @@ end, "WARRIOR", 3, "MiracleWarrior")
 CheckRotationVersion()
 
 
-
--- 初始化TTD系统
-
-InitializeTTDSystem()
 
 
 
