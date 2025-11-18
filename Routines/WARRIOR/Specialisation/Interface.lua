@@ -617,12 +617,13 @@ local function RegisterStatusToggles()
         tooltip = "自动使用挫志怒吼",
         default = true
     })
-    -- 【新增】智能姿态状态栏
+    -- 【新增】智能姿态状态栏 - 默认关闭
     Aurora.Rotation.SmartStanceToggle = Aurora:AddGlobalToggle({
         label = "智能姿态",
         var = "miraclewarrior_smart_stance",
-        icon = 386164, -- 战斗姿态图标
+        icon = 386164,   -- 战斗姿态图标
         tooltip = "开启后天神下凡会切换战斗姿态（慎用）",
+        default = false, -- 默认关闭，需要用户手动开启
         onClick = function(value)
             print("智能姿态: " .. (value and "启用" or "禁用"))
         end
