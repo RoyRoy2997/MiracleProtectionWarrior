@@ -415,7 +415,6 @@ local function ShouldUseLongCooldownTeamAware()
 
     -- end
 
-    print(avgTTD, ttdThreshold)
 
 
 
