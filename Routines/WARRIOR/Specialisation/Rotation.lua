@@ -1,80 +1,30 @@
--- MiracleWarrior 主循环
-
-
-
 -- 获取常用单位
-
-local target = Aurora.UnitManager:Get("target")
 
 local player = Aurora.UnitManager:Get("player")
 
+local target = Aurora.UnitManager:Get("target")
 
-
--- 获取你的法术书
-
-local spells = Aurora.SpellHandler.Spellbooks.warrior["3"].MiracleWarrior.spells
-
-local auras = Aurora.SpellHandler.Spellbooks.warrior["3"].MiracleWarrior.auras
-
-local talents = Aurora.SpellHandler.Spellbooks.warrior["3"].MiracleWarrior.talents
+local pet = Aurora.UnitManager:Get("pet")
 
 
 
--- 版本信息
+-- 获取技能书（对应Spellbook注册的命名空间和专精）
 
-local ROTATION_VERSION = "2.1.2"
+local spells = Aurora.SpellHandler.Spellbooks.warlock["3"].RoyWarlock.spells
 
+local auras = Aurora.SpellHandler.Spellbooks.warlock["3"].RoyWarlock.auras
 
-
-
-
--- 战斗数据统计
-
-local combatStats = {
-
-    startTime = 0,
-
-    totalDamage = 0,
-
-    interrupts = 0,
-
-    taunts = 0,
-
-    reflects = 0,
-
-    victoryRushes = 0,
-
-    rallyingCries = 0,
-
-    lastReset = 0
-
-}
+local talents = Aurora.SpellHandler.Spellbooks.warlock["3"].RoyWarlock.talents
 
 
 
--- 技能使用冷却跟踪
+-- 【新增】版本信息
 
-local skillCooldowns = {
-
-    victory_rush = 0,
-
-    last_stand = 0,
-
-    shield_wall = 0,
-
-    rallying_cry = 0,
-
-    demoralizing_shout = 0,
-
-    avatar = 0,
-
-    battle_shout = 0
-
-}
+local ROTATION_VERSION = "1.8.0"
 
 
 
--- 药水物品
+-- 【新增】药水定义
 
 local potions = {
 
@@ -90,260 +40,196 @@ local potions = {
 
     heal_1star = Aurora.ItemHandler.NewItem(244835),  -- 焕生治疗药水1星
 
-    heal_Tang = Aurora.ItemHandler.NewItem(5512)      -- 治疗石
+    heal_Tang = Aurora.ItemHandler.NewItem(224464)    -- 治疗石
 
 }
 
 
 
--- 饰品栏位定义
+-- 战斗数据统计
 
-local TRINKET_SLOTS = {
+local combatStats = {
 
-    TRINKET1 = 13,
+    startTime = 0,
 
-    TRINKET2 = 14
+    totalDamage = 0,
 
-}
+    interrupts = 0,
 
+    reflects = 0,
 
-
--- 饰品使用冷却跟踪
-
-local trinketCooldowns = {
-
-    trinket1 = 0,
-
-    trinket2 = 0
+    lastReset = 0
 
 }
 
 
 
--- 只能对队友使用的饰品列表
+-- 【新增】随机数生成器
 
-local teamOnlyTrinkets = {
+local random = math.random
 
-    [12345] = true, -- 示例：治疗饰品1
+local lastRandomInterruptTime = 0
 
-    [12346] = true, -- 示例：治疗饰品2
-
-}
+local randomInterruptDelay = 0
 
 
 
--- 盾牌格挡状态跟踪
+-- 技能使用冷却跟踪
 
-local shieldBlockTracker = {
+local skillCooldowns = {
 
-    lastCastTime = 0,
+    spell_lock = 0,
 
-    buffDuration = 6,
-
-    shouldMaintain = true
+    spell_lock_modian = 0,
 
 }
 
 
 
--- 怒意迸发状态跟踪
+-- 【新增】火跑管理变量
 
-local lastRage = 0
+local burningRushState = {
 
-local rageConsumed = 0
+    lastMovementCheck = 0,
 
-local ragingBlowReady = false
+    lastStandingCheck = 0,
 
-
-
-
-
-
-
-
-
--- 高危技能列表
-
-local highRiskSpells = {
-
-    -- 高危物理技能 - 使用盾墙
-
-    physical = {
-
-        [1219482] = "裂隙利爪",
-
-        [1235368] = "奥术猛袭",
-
-        [1222341] = "幽暗之咬",
-
-        [1237071] = "石拳",
-
-        [1235766] = "致死打击",
-
-        [322936] = "粉碎砸击",
-
-        [352796] = "代理打击",
-
-        [354297] = "凌光箭",
-
-        [330586] = "吞噬血肉",
-
-        [323515] = "仇恨打击",
-
-        [324079] = "收割之镰",
-
-        [469478] = "淤泥之爪",
-
-        [465666] = "火花猛击",
-
-        [448485] = "盾牌猛击",
-
-        [448515] = "神圣审判",
-
-        [349934] = "狂热鞭笞协议",
-
-        [355477] = "强力脚踢",
-
-        [355830] = "迅斩",
-
-        [347716] = "开信刀",
-
-        [473351] = "电气重碾",
-
-        [459799] = "重击",
-
-        [431491] = "污邪斩击",
-
-        [438471] = "贪食撕咬",
-
-        [433002] = "深掘打击",
-
-        [1240912] = "穿刺",
-
-        [350916] = "安保猛击",
-
-        [359028] = "安保猛击",
-
-        [346116] = "剪切挥舞",
-
-        [355048] = "破壳猛击",
-
-        [167385] = "强力猛击",
-
-    },
-
-
-
-    -- 高危法术技能 - 使用法术反射
-
-    magical = {
-
-        [473351] = "电气重碾",
-
-        [448787] = "纯净",
-
-        [465666] = "火花猛击",
-
-        [451119] = "深渊轰击",
-
-        [473114] = "泥石流",
-
-        [423015] = "遣罚者之盾",
-
-        [469478] = "淤泥之爪",
-
-        [1222341] = "幽暗之咬",
-
-        [427001] = "恐惧猛击",
-
-        [466190] = "雷霆重拳",
-
-        [328791] = "哀伤仪式",
-
-        [167385] = "强力猛击",
-
-    }
+    isBurningRushActive = false
 
 }
 
 
 
--- 【新增】石像形态触发的光环列表
+-- 【新增】灵魂石战复相关变量
 
-local stoneformAuras = {
+local soulstoneTargetTime = 0
 
-    [347716] = "开信刀", -- 请替换为实际需要石像形态解除的debuff ID
-
-
-
-    -- 添加更多需要石像形态解除的debuff ID
-
-}
+local soulstoneTargetGuid = nil
 
 
 
--- 【核心修复】直接的状态栏检查函数
+-- 【新增】枯萎补dot目标跟踪
+
+local witherRefreshTarget = nil
+
+
+
+-- 【新增】宠物召唤延迟跟踪
+
+local lastDismountTime = 0
+
+local petSummonDelay = 1.0 -- 1秒延迟
+
+
+
+-- 【修复】配置获取函数 - 确保设置页面选项正确生效
+
+local function GetConfig(key, default)
+
+    local value = Aurora.Config:Read("RoyWarlock." .. key)
+
+    if value == nil then
+
+        return default
+
+    end
+
+    return value
+
+end
+
+
+
+-- 【新增】TimeToDieRR函数 - 按照您提供的代码翻译成Aurora框架版本
+
+local function TimeToDieRR(unit, percentage)
+
+    percentage = percentage or 0
+
+    if not unit.exists then return 0 end
+
+
+
+    -- 检查是否是玩家或训练假人
+
+    if unit.player or unit.isdummy then return 8888 end
+
+
+
+    -- 计算目标血量（考虑百分比）
+
+    local health = unit.health - (unit.healthmax / 100 * percentage)
+
+    if health < 1 then return 0 end
+
+
+
+    local CDRS1 = 1.0                     -- 血量修正
+
+    local CDRS2 = 1.0                     -- 攻击力修正
+
+    local prmh = player.healthmax * CDRS1 -- 玩家最大血量 * 修正
+
+
+
+    -- 获取40码内活着的队友数量
+
+    local active_heal_40y = 0
+
+    Aurora.friends:within(40):each(function(friend)
+
+        if friend.alive and friend.ishealer then
+
+            active_heal_40y = active_heal_40y + 1
+
+        end
+
+    end)
+
+
+
+    local pahn = active_heal_40y * 0.75 -- 团队输出系数
+
+    local loss = prmh * math.max(pahn, CDRS2)
+
+
+
+    -- 计算时间（8秒干死同血量怪）
+
+    return math.min(math.max(health / loss * 8, Aurora.gcd()), 8888)
+
+end
+
+
+
+-- 【修改】状态栏检查函数 - 修复状态栏控制
 
 local function IsToggleEnabled(toggleName)
-    if not Aurora.Rotation[toggleName] then
-        return true -- 如果状态栏未加载，默认启用
-    end
+
+    if not Aurora.Rotation then return true end
+
+    if not Aurora.Rotation[toggleName] then return true end
 
     return Aurora.Rotation[toggleName]:GetValue()
+
 end
 
 
 
--- 【核心修复】简化的配置获取 - 直接从状态栏读取
+-- 【修改】宠物存在判断函数 - 增加延迟机制
 
-local function GetToggleState()
-    return {
+local function HasActivePet()
 
-        tauntEnabled = IsToggleEnabled("TauntToggle"),
+    -- 如果玩家刚下坐骑，等待延迟时间
 
-        defensiveEnabled = IsToggleEnabled("DefensiveToggle"),
+    if GetTime() - lastDismountTime < petSummonDelay then
 
-        spellReflectEnabled = IsToggleEnabled("SpellReflectToggle"),
+        return true -- 在延迟期间认为宠物存在，避免立即召唤
 
-        victoryRushEnabled = IsToggleEnabled("VictoryRushToggle"),
-
-        rallyingCryEnabled = IsToggleEnabled("RallyingCryToggle"),
-
-        shieldChargeEnabled = IsToggleEnabled("ShieldChargeToggle"),
-
-        hardControlInterruptEnabled = IsToggleEnabled("HardControlInterruptToggle"),
-
-        demoralizingShoutEnabled = IsToggleEnabled("DemoralizingShoutToggle"), -- 新增挫志怒吼状态栏控制
-
-        smartStanceEnabled = IsToggleEnabled("SmartStanceToggle")              -- 新增智能姿态状态栏控制
-
-    }
-end
-
-
-
--- 检查循环版本更新
-
-local function CheckRotationVersion()
-    local lastRotationVersion = Aurora.Config:Read("MiracleWarrior.rotation_version") or "0"
-
-
-
-    if lastRotationVersion ~= ROTATION_VERSION then
-        print("=== MiracleWarrior 循环已更新 ===")
-
-        print("版本: " .. ROTATION_VERSION)
-
-        print("• 优化TTD判断逻辑")
-
-        print("• 使用团队感知的冷却技能判断")
-
-        print("• 修复非战斗状态冷却技能逻辑")
-
-        print("================================")
-
-        Aurora.Config:Write("MiracleWarrior.rotation_version", ROTATION_VERSION)
     end
+
+    return pet and pet.exists
+
 end
 
 
@@ -351,7 +237,9 @@ end
 -- 检查技能冷却
 
 local function IsSkillOnCooldown(skillName)
+
     return skillCooldowns[skillName] and GetTime() < skillCooldowns[skillName]
+
 end
 
 
@@ -359,382 +247,9 @@ end
 -- 设置技能冷却
 
 local function SetSkillCooldown(skillName, duration)
+
     skillCooldowns[skillName] = GetTime() + duration
-end
 
-
-
--- 【核心】基于Aurora.grouprawttd()的TTD判断（关联页面设置）
-
-local function ShouldUseLongCooldownTeamAware()
-    -- 1. 从页面设置读取配置（用户可在GUI中修改这些值）
-
-    local ttdEnabled = Aurora.Config:Read("MiracleWarrior.ttd_enabled")     -- 是否启用TTD判断
-
-    local ttdThreshold = Aurora.Config:Read("MiracleWarrior.ttd_threshold") -- TTD阈值（秒）
-
-
-
-    -- 2. 基础校验：TTD判断禁用 → 直接允许使用长冷却技能
-
-    if ttdEnabled == false then
-        return true
-    end
-
-
-
-    -- 3. 非战斗状态 → 不允许使用长冷却技能（避免空放）
-
-    if not player.combat then
-        return false
-    end
-
-
-
-    -- 4. 调用Aurora原生API：获取40码内敌人平均TTD（训练假人返回999，文档中明确说明）
-
-    -- 兼容：若框架用 "groupttd()" 命名（文档中主要API名），自动 fallback
-
-    local avgTTD = Aurora.grouprawttd and Aurora.grouprawttd() or Aurora.groupttd()
-
-
-
-    -- 5. API异常处理：若返回值无效（如≤0），默认按“可使用”处理（避免误判）
-
-    if not avgTTD or avgTTD <= 0 then
-        avgTTD = 999 -- 异常时按“敌人存活很久”处理
-    end
-
-
-
-    -- 6. 调试信息（可选，用户可注释：打印当前平均TTD和阈值，验证是否生效）
-
-    -- if Aurora.Config:Read("MiracleWarrior.debug_ttd") then
-
-    --     print(string.format("[TTD判断] 40码内平均TTD：%.1f秒，阈值：%.1f秒", avgTTD, ttdThreshold))
-
-    -- end
-
-
-
-
-    -- 7. 核心判断：平均TTD > 阈值 → 允许使用长冷却技能
-
-    return avgTTD > ttdThreshold
-end
-
-
-
--- 【完全重写】怒意迸发状态跟踪
-
-local function GetOverpowerState()
-    local overpowerStacks = player.auracount(386486) or 0
-
-    local hasOverpowerBuff = player.aura(386478) or false
-
-    local progress = (overpowerStacks / 100) * 100
-
-
-
-    return {
-
-        stacks = overpowerStacks,
-
-        progress = progress,
-
-        hasBuff = hasOverpowerBuff,
-
-        isReady = hasOverpowerBuff
-
-    }
-end
-
-
-
--- 更新怒意迸发状态
-
-local function UpdateRagingBlowState()
-    local currentRage = player.rage or 0
-
-    if lastRage > 0 then
-        local rageUsed = lastRage - currentRage
-
-
-
-        if rageUsed > 0 then
-            rageConsumed = rageConsumed + rageUsed
-
-
-
-            if rageConsumed >= 250 then
-                ragingBlowReady = true
-
-                rageConsumed = 0
-            end
-        end
-    end
-
-
-
-    lastRage = currentRage
-
-
-
-    if ragingBlowReady then
-        if (spells.thunder_clap and spells.thunder_clap:waslastcast(2)) or
-
-            (spells.shield_slam and spells.shield_slam:waslastcast(2)) then
-            ragingBlowReady = false
-        end
-    end
-end
-
-
-
--- 智能饰品使用
-
-local function SmartTrinketUse()
-    local trinket1Mode = Aurora.Config:Read("MiracleWarrior.trinket1_mode") or "cd"
-
-    local trinket2Mode = Aurora.Config:Read("MiracleWarrior.trinket2_mode") or "cd"
-
-    local currentTime = GetTime()
-
-    local usedTrinket = false
-
-
-
-    -- 饰品1逻辑
-
-    if trinket1Mode ~= "none" and currentTime > trinketCooldowns.trinket1 then
-        local shouldUseTrinket1 = false
-
-
-
-        if trinket1Mode == "cd" then
-            shouldUseTrinket1 = true
-        elseif trinket1Mode == "avatar" and player.aura(107574) then
-            shouldUseTrinket1 = true
-        elseif trinket1Mode == "health" then
-            local healthThreshold = Aurora.Config:Read("MiracleWarrior.trinket1_health_threshold") or 30
-
-            if player.hp < healthThreshold then
-                shouldUseTrinket1 = true
-            end
-        end
-
-
-
-        if shouldUseTrinket1 then
-            local itemID = GetInventoryItemID("player", TRINKET_SLOTS.TRINKET1)
-
-            if itemID and itemID > 0 then
-                local trinket = Aurora.ItemHandler.NewItem(itemID)
-
-                if trinket and trinket:ready() then
-                    if teamOnlyTrinkets[itemID] then
-                        if player.group or player.raid then
-                            local teammateNeedsHeal = false
-
-                            if player.raid then
-                                for i = 1, GetNumGroupMembers() do
-                                    local unit = Aurora.UnitManager:Get("raid" .. i)
-
-                                    if unit and unit.exists and unit.alive and unit.distanceto(player) <= 40 then
-                                        if unit.hp < 80 then
-                                            teammateNeedsHeal = true
-
-                                            break
-                                        end
-                                    end
-                                end
-                            elseif player.group then
-                                for i = 1, GetNumGroupMembers() do
-                                    local unit = Aurora.UnitManager:Get("party" .. i)
-
-                                    if unit and unit.exists and unit.alive and unit.distanceto(player) <= 40 then
-                                        if unit.hp < 80 then
-                                            teammateNeedsHeal = true
-
-                                            break
-                                        end
-                                    end
-                                end
-                            end
-
-
-
-                            if teammateNeedsHeal then
-                                usedTrinket = trinket:use(player)
-                            end
-                        end
-                    else
-                        usedTrinket = trinket:use(player)
-                    end
-
-
-
-                    trinketCooldowns.trinket1 = currentTime + 2
-                end
-            end
-        end
-    end
-
-
-
-    -- 饰品2逻辑
-
-    if not usedTrinket and trinket2Mode ~= "none" and currentTime > trinketCooldowns.trinket2 then
-        local shouldUseTrinket2 = false
-
-
-
-        if trinket2Mode == "cd" then
-            shouldUseTrinket2 = true
-        elseif trinket2Mode == "avatar" and player.aura(107574) then
-            shouldUseTrinket2 = true
-        elseif trinket2Mode == "health" then
-            local healthThreshold = Aurora.Config:Read("MiracleWarrior.trinket2_health_threshold") or 30
-
-            if player.hp < healthThreshold then
-                shouldUseTrinket2 = true
-            end
-        end
-
-
-
-        if shouldUseTrinket2 then
-            local itemID = GetInventoryItemID("player", TRINKET_SLOTS.TRINKET2)
-
-            if itemID and itemID > 0 then
-                local trinket = Aurora.ItemHandler.NewItem(itemID)
-
-                if trinket and trinket:ready() then
-                    if teamOnlyTrinkets[itemID] then
-                        if player.group or player.raid then
-                            local teammateNeedsHeal = false
-
-                            if player.raid then
-                                for i = 1, GetNumGroupMembers() do
-                                    local unit = Aurora.UnitManager:Get("raid" .. i)
-
-                                    if unit and unit.exists and unit.alive and unit.distanceto(player) <= 40 then
-                                        if unit.hp < 80 then
-                                            teammateNeedsHeal = true
-
-                                            break
-                                        end
-                                    end
-                                end
-                            elseif player.group then
-                                for i = 1, GetNumGroupMembers() do
-                                    local unit = Aurora.UnitManager:Get("party" .. i)
-
-                                    if unit and unit.exists and unit.alive and unit.distanceto(player) <= 40 then
-                                        if unit.hp < 80 then
-                                            teammateNeedsHeal = true
-
-                                            break
-                                        end
-                                    end
-                                end
-                            end
-
-
-
-                            if teammateNeedsHeal then
-                                usedTrinket = trinket:use(player)
-                            end
-                        end
-                    else
-                        usedTrinket = trinket:use(player)
-                    end
-
-
-
-                    trinketCooldowns.trinket2 = currentTime + 2
-                end
-            end
-        end
-    end
-
-
-
-    return usedTrinket
-end
-
-
-
-
-
-
-
-
-
--- 智能药水使用逻辑
-
-local function SmartPotionUse()
-    local burstPotionMode = Aurora.Config:Read("MiracleWarrior.burst_potion_mode") or "cd"
-
-    local healPotionHealth = Aurora.Config:Read("MiracleWarrior.heal_potion_health") or 30
-
-
-
-    -- 检查爆发药水
-
-    if burstPotionMode ~= "none" then
-        local burstPotions = { potions.burst_3star, potions.burst_2star, potions.burst_1star }
-
-
-
-        for _, potion in ipairs(burstPotions) do
-            if potion then
-                if potion:ready() and potion:usable(player) and potion:count() > 0 then
-                    local shouldUse = false
-
-
-
-                    if burstPotionMode == "cd" then
-                        shouldUse = true
-                    elseif burstPotionMode == "avatar" and player.aura(107574) then
-                        shouldUse = true
-                    end
-
-
-
-                    if shouldUse then
-                        if potion:use(player) then
-                            return true
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-
-
-    -- 检查治疗药水
-
-    if player.hp < healPotionHealth then
-        local healPotions = { potions.heal_3star, potions.heal_2star, potions.heal_1star, potions.heal_Tang }
-
-
-
-        for _, potion in ipairs(healPotions) do
-            if potion then
-                if potion:ready() and potion:usable(player) and potion:count() > 0 then
-                    if potion:use(player) then
-                        return true
-                    end
-                end
-            end
-        end
-    end
-
-
-
-    return false
 end
 
 
@@ -747,17 +262,270 @@ local lastInterruptTime = 0
 
 
 
--- 智能打断系统
 
--- 智能打断系统 - 修复版：拳击现在也会扫描附近所有敌人
+
+-- 【修正】火跑管理功能
+
+local function BurningRushManagement()
+
+    -- 检查火跑功能是否启用
+
+    if not GetConfig("burning_rush_enabled", false) then
+
+        return false
+
+    end
+
+
+
+    local currentTime = GetTime()
+
+    local burningRushHealth = GetConfig("burning_rush_health", 50)
+
+    local moveTimeThreshold = GetConfig("burning_rush_move_time", 3)
+
+    local standTimeThreshold = GetConfig("burning_rush_stand_time", 2)
+
+    local oocEnabled = GetConfig("burning_rush_ooc", false)
+
+
+
+    -- 检查是否在脱战状态且脱战启用未开启
+
+    if not player.combat and not oocEnabled then
+
+        -- 如果在脱战状态且脱战启用未开启，但有火跑buff，则关闭
+
+        if player.aura(111400) then
+
+            if spells.Burning_Rush:ready() and spells.Burning_Rush:castable(player) then
+
+                spells.Burning_Rush:cast(player)
+
+                print("脱战状态，关闭火跑")
+
+                return true
+
+            end
+
+        end
+
+        return false
+
+    end
+
+
+
+    -- 检查血量条件 - 血量过低时关闭火跑
+
+    if player.hp < burningRushHealth then
+
+        if player.aura(111400) then
+
+            if spells.Burning_Rush:ready() and spells.Burning_Rush:castable(player) then
+
+                spells.Burning_Rush:cast(player)
+
+                print("血量过低，关闭火跑")
+
+                return true
+
+            end
+
+        end
+
+        return false
+
+    end
+
+
+
+    -- 检查移动状态并更新计时器
+
+    if player.moving then
+
+        burningRushState.lastMovementCheck = currentTime
+
+        -- 重置站立计时器
+
+        if burningRushState.lastStandingCheck == 0 then
+
+            burningRushState.lastStandingCheck = currentTime
+
+        end
+
+    else
+
+        burningRushState.lastStandingCheck = currentTime
+
+        -- 重置移动计时器
+
+        if burningRushState.lastMovementCheck == 0 then
+
+            burningRushState.lastMovementCheck = currentTime
+
+        end
+
+    end
+
+
+
+    local hasBurningRush = player.aura(111400)
+
+
+
+    -- 检查是否需要开启火跑
+
+    if hasBurningRush then
+
+        -- 持续移动时间超过阈值，开启火跑
+
+        if currentTime - burningRushState.lastMovementCheck >= moveTimeThreshold then
+
+            if spells.Burning_Rush:ready() and spells.Burning_Rush:castable(player) then
+
+                if spells.Burning_Rush:cast(player) then
+
+                    print("站立时间达到阈值，关闭火跑")
+
+                    return true
+
+                end
+
+            end
+
+        end
+
+    else
+
+        -- 火跑已激活，检查是否需要关闭
+
+        -- 站立时间超过阈值，关闭火跑
+
+        if currentTime - burningRushState.lastStandingCheck >= standTimeThreshold then
+
+            if spells.Burning_Rush:ready() and spells.Burning_Rush:castable(player) then
+
+                spells.Burning_Rush:cast(player)
+
+                print("移动时间达到阈值，开启火跑")
+
+                return true
+
+            end
+
+        end
+
+    end
+
+
+
+    return false
+
+end
+
+
+
+-- 【新增】聚拢检测功能
+
+local function ShouldUseAOE()
+
+    -- 检查聚拢功能是否启用
+
+    if not GetConfig("gathering_check_enabled", false) then
+
+        return true
+
+    end
+
+
+
+    local gatheringPercentage = GetConfig("gathering_percentage", 50) / 100
+
+
+
+    -- 获取坦克单位
+
+    local tank = Aurora.UnitManager.tank
+
+    if not tank.exists then
+
+        return true -- 没有坦克，默认允许AOE
+
+    end
+
+
+
+    -- 统计所有在战斗中的敌人
+
+    local totalEnemies = 0
+
+    local enemiesNearTank = 0
+
+
+
+    Aurora.enemies:within(40):each(function(enemy)
+
+        if enemy.exists and enemy.alive and enemy.combat then
+
+            totalEnemies = totalEnemies + 1
+
+            -- 检查敌人是否在坦克8码范围内
+
+            if enemy:distanceto(tank) <= 8 then
+
+                enemiesNearTank = enemiesNearTank + 1
+
+            end
+
+        end
+
+    end)
+
+
+
+    -- 计算聚拢百分比
+
+    if totalEnemies == 0 then
+
+        return true
+
+    end
+
+
+
+    local actualPercentage = enemiesNearTank / totalEnemies
+
+
+
+    -- 如果聚拢百分比达到阈值，允许AOE
+
+    if actualPercentage >= gatheringPercentage then
+
+        return true
+
+    else
+
+        print(string.format("聚拢检测: %.1f%% < %.1f%%，暂不释放AOE技能", actualPercentage * 100, gatheringPercentage * 100))
+
+        return false
+
+    end
+
+end
+
+
+
+-- 【修改】智能打断系统 - 修复配置读取
 
 local function SmartInterrupts()
-    local toggles = GetToggleState()
 
-    -- 打断功能现在由状态栏控制
+    -- 检查打断状态栏是否启用
 
-    if not toggles.hardControlInterruptEnabled then
+    if not IsToggleEnabled("InterruptToggle") then
+
         return false
+
     end
 
 
@@ -766,10 +534,22 @@ local function SmartInterrupts()
 
 
 
-    -- 防止连续打断
+    -- 检查法术锁定冷却
 
-    if currentTime - lastInterruptTime < 1 then
+    if IsSkillOnCooldown("spell_lock") then
+
         return false
+
+    end
+
+
+
+    -- 随机延迟机制：防止固定节奏的打断
+
+    if currentTime - lastRandomInterruptTime < randomInterruptDelay then
+
+        return false
+
     end
 
 
@@ -785,191 +565,127 @@ local function SmartInterrupts()
     local focusTarget = Aurora.UnitManager:Get("focus")
 
     if focusTarget and focusTarget.exists and focusTarget.casting and focusTarget.castinginterruptible then
+
         local castId = focusTarget.castingspellid
 
         if interruptList[castId] then
-            if spells.pummel and spells.pummel:ready() and spells.pummel:castable(focusTarget) then
-                if spells.pummel:cast(focusTarget) then
-                    lastInterruptTime = currentTime
 
-                    combatStats.interrupts = combatStats.interrupts + 1
+            if spells.spell_lock:cast(focusTarget) or spells.spell_lock_modian:cast(focusTarget) then
 
-                    return true
-                end
+                lastRandomInterruptTime = currentTime
+
+                randomInterruptDelay = random(0.5, 1.5) -- 随机延迟0.5-1.5秒
+
+                SetSkillCooldown("spell_lock", 24)
+
+                return true
+
             end
+
         end
+
     end
 
 
 
-    -- 优先级2：扫描附近所有敌人（与硬控打断相同的逻辑）
+    -- 优先级2：扫描附近所有敌人
 
     local enemiesCastingDangerous = {}
 
 
 
-    -- 收集附近正在施放危险技能的敌人
+    Aurora.enemies:within(40):each(function(enemy)
 
-    Aurora.enemies:within(15):each(function(enemy)
         if enemy.exists and enemy.casting and enemy.castinginterruptible and enemy.combat then
+
             local castId = enemy.castingspellid
 
             if interruptList[castId] then
+
                 table.insert(enemiesCastingDangerous, enemy)
+
             end
+
         end
+
     end)
 
 
 
-    -- 如果有符合条件的敌人，使用拳击打断第一个
+    -- 如果有符合条件的敌人，使用法术锁定打断第一个
 
     if #enemiesCastingDangerous >= 1 then
+
         local firstDangerousEnemy = enemiesCastingDangerous[1]
 
-        if firstDangerousEnemy and spells.pummel and spells.pummel:ready() and spells.pummel:castable(firstDangerousEnemy) then
-            local success = spells.pummel:cast(firstDangerousEnemy)
+        if firstDangerousEnemy then
+
+            local success = spells.spell_lock:cast(firstDangerousEnemy) or
+
+                spells.spell_lock_modian:cast(firstDangerousEnemy)
 
             if success then
-                lastInterruptTime = currentTime
 
-                combatStats.interrupts = combatStats.interrupts + 1
+                lastRandomInterruptTime = currentTime
+
+                randomInterruptDelay = random(0.5, 1.5)
+
+                SetSkillCooldown("spell_lock", 24)
 
                 return true
+
             end
+
         end
+
     end
 
 
 
-    -- 优先级3：检查当前目标（作为备选）
+    -- 优先级3：检查当前目标
 
     if target and target.exists and target.casting and target.castinginterruptible then
+
         local castId = target.castingspellid
 
         if interruptList[castId] then
-            if spells.pummel and spells.pummel:ready() and spells.pummel:castable(target) then
-                if spells.pummel:cast(target) then
-                    lastInterruptTime = currentTime
 
-                    combatStats.interrupts = combatStats.interrupts + 1
+            if spells.spell_lock:cast(target) or
 
-                    return true
-                end
+                spells.spell_lock_modian:cast(target) then
+
+                lastRandomInterruptTime = currentTime
+
+                randomInterruptDelay = random(0.5, 1.5)
+
+                SetSkillCooldown("spell_lock", 24)
+
+                return true
+
             end
+
         end
+
     end
 
 
 
     return false
+
 end
 
--- local function SmartInterrupts()
-
---     local toggles = GetToggleState()
-
---     -- 打断功能现在由状态栏控制
-
---     if not toggles.hardControlInterruptEnabled then
-
---         return false
-
---     end
 
 
-
---     local currentTime = GetTime()
-
-
-
---     -- 防止连续打断
-
---     if currentTime - lastInterruptTime < 1 then
-
---         return false
-
---     end
-
-
-
---     -- 使用Aurora框架维护的打断列表
-
---     local interruptList = Aurora.Lists.InterruptSpells or {}
-
-
-
---     -- 检查焦点目标
-
---     local focusTarget = Aurora.UnitManager:Get("focus")
-
---     if focusTarget and focusTarget.exists and focusTarget.casting and focusTarget.castinginterruptible then
-
---         local castId = focusTarget.castingspellid
-
---         if interruptList[castId] then
-
---             if spells.pummel and spells.pummel:ready() and spells.pummel:castable(focusTarget) then
-
---                 if spells.pummel:cast(focusTarget) then
-
---                     lastInterruptTime = currentTime
-
---                     combatStats.interrupts = combatStats.interrupts + 1
-
---                     return true
-
---                 end
-
---             end
-
---         end
-
---     end
-
-
-
---     -- 检查当前目标
-
---     if target and target.exists and target.casting and target.castinginterruptible then
-
---         local castId = target.castingspellid
-
---         if interruptList[castId] then
-
---             if spells.pummel and spells.pummel:ready() and spells.pummel:castable(target) then
-
---                 if spells.pummel:cast(target) then
-
---                     lastInterruptTime = currentTime
-
---                     combatStats.interrupts = combatStats.interrupts + 1
-
---                     return true
-
---                 end
-
---             end
-
---         end
-
---     end
-
-
-
---     return false
-
--- end
-
-
-
--- 【强制检查】硬控打断系统 - 直接使用状态栏控制
+-- 【修改】硬控打断系统 - 增加死亡缠绕选项
 
 local function HardControlInterrupts()
-    local toggles = GetToggleState()
 
-    if not toggles.hardControlInterruptEnabled then
+    -- 检查硬控状态栏是否启用
+
+    if not IsToggleEnabled("HardControlToggle") then
+
         return false
+
     end
 
 
@@ -978,10 +694,22 @@ local function HardControlInterrupts()
 
 
 
-    -- 防止连续打断
+    -- 检查硬控技能冷却
 
-    if currentTime - lastInterruptTime < 1 then
+    if IsSkillOnCooldown("Shadowfury") and IsSkillOnCooldown("Mortal_Coil") then
+
         return false
+
+    end
+
+
+
+    -- 随机延迟机制
+
+    if currentTime - lastRandomInterruptTime < randomInterruptDelay then
+
+        return false
+
     end
 
 
@@ -994,1318 +722,1839 @@ local function HardControlInterrupts()
 
     -- 收集附近正在施放危险技能的敌人
 
-    Aurora.enemies:within(15):each(function(enemy)
+    Aurora.enemies:within(40):each(function(enemy)
+
         if enemy.exists and enemy.casting and enemy.castinginterruptible and enemy.combat then
+
             local castId = enemy.castingspellid
 
             if interruptList[castId] then
+
                 table.insert(enemiesCastingDangerous, enemy)
+
             end
+
         end
+
     end)
 
 
 
-    if #enemiesCastingDangerous >= 1 then
-        -- 优先使用震荡波（群体硬控）
+    -- 群体硬控：暗影之怒
 
-        if spells.shockwave and spells.shockwave:ready() and spells.shockwave:castable(player) then
-            local success = spells.shockwave:cast(player)
+    if #enemiesCastingDangerous >= 2 and not IsSkillOnCooldown("Shadowfury") then
 
-            if success then
-                lastInterruptTime = currentTime
+        if spells.Shadowfury and spells.Shadowfury:ready() then
 
-                combatStats.interrupts = combatStats.interrupts + 1
+            if spells.Shadowfury:smartaoe(player, {
 
-                return true
-            end
-        end
+                    offsetMin = 0,
 
+                    offsetMax = 40,
 
+                    filter = function(unit, distance, position)
 
-        -- 其次使用风暴之锤（单体硬控）
+                        return unit.enemy and unit.alive
 
-        if spells.storm_bolt and spells.storm_bolt:ready() then
-            local firstDangerousEnemy = enemiesCastingDangerous[1]
-
-            if firstDangerousEnemy and spells.storm_bolt:castable(firstDangerousEnemy) then
-                local success = spells.storm_bolt:cast(firstDangerousEnemy)
-
-                if success then
-                    lastInterruptTime = currentTime
-
-                    combatStats.interrupts = combatStats.interrupts + 1
-
-                    return true
-                end
-            end
-        end
-    end
-
-
-
-    return false
-end
-
-
-
--- 整合打断系统
-
-local function Interrupts()
-    -- 先尝试普通打断（拳击）
-
-    if SmartInterrupts() then
-        return true
-    end
-
-
-
-    -- 再尝试硬控打断
-
-    if HardControlInterrupts() then
-        return true
-    end
-
-
-
-    return false
-end
-
-
-
--- 【整合】智能法术反射 - 统一在智能减伤中处理
-
-local function SmartSpellReflect()
-    local toggles = GetToggleState()
-
-    if not toggles.spellReflectEnabled then
-        return false
-    end
-
-
-
-    if not spells.spell_reflect or not spells.spell_reflect:ready() then
-        return false
-    end
-
-
-
-    local shouldReflect = false
-
-    local reflectableSpells = {
-
-        [473351] = true,
-
-        [448787] = true,
-
-        [465666] = true,
-
-        [451119] = true,
-
-        [473114] = true,
-
-        [423015] = true,
-
-        [469478] = true,
-
-        [1222341] = true,
-
-        [427001] = true,
-
-        [466190] = true,
-
-        [328791] = true,
-
-        [167385] = true
-
-    }
-
-
-
-    Aurora.enemies:within(30):each(function(enemy)
-        if enemy.casting and enemy.castinginterruptible then
-            local castId = enemy.castingspellid
-
-            if reflectableSpells[castId] then
-                shouldReflect = true
-
-                return true
-            end
-        end
-    end)
-
-
-
-    if shouldReflect then
-        local success = spells.spell_reflect:cast(player)
-
-        if success then
-            combatStats.reflects = combatStats.reflects + 1
-        end
-
-        return success
-    end
-
-
-
-    return false
-end
-
-
-
--- 【新增】智能石像形态
-
-local function SmartStoneform()
-    if not spells.Stoneform or not spells.Stoneform:ready() or not spells.Stoneform:castable(player) then
-        return false
-    end
-
-
-
-    -- 检查玩家是否有需要石像形态解除的debuff
-
-    for auraId, auraName in pairs(stoneformAuras) do
-        if player.aura(auraId) then
-            local success = spells.Stoneform:cast(player)
-
-            if success then
-                Aurora.alert("使用石像形态解除: " .. auraName, 20594)
-
-                return true
-            end
-        end
-    end
-
-
-
-    return false
-end
-
-
-
--- 【整合】高危技能预警和减伤 - 整合法术反射和新增石像形态
-
-local function HighRiskSpellDefense()
-    local toggles = GetToggleState()
-
-    if not toggles.defensiveEnabled then
-        return false
-    end
-
-
-
-    -- 首先检查石像形态
-
-    if SmartStoneform() then
-        return true
-    end
-
-
-
-    -- 检查附近战斗中敌人
-
-    Aurora.enemies:within(30):each(function(enemy)
-        if enemy.exists and enemy.casting and enemy.combat then
-            local castId = enemy.castingspellid
-
-
-
-            -- 检查是否目标是我
-
-            if enemy.target and enemy.target.guid == player.guid then
-                -- 高危物理技能 - 使用盾墙
-
-                if highRiskSpells.physical[castId] then
-                    if spells.shield_wall and spells.shield_wall:ready() and spells.shield_wall:castable(player) then
-                        local spellName = highRiskSpells.physical[castId] or "Unknown"
-
-                        Aurora.alert("高危物理技能: " .. spellName .. "!", 871)
-
-                        return spells.shield_wall:cast(player)
                     end
-                end
 
+                })
 
+            then
 
-                -- 高危法术技能 - 使用法术反射
+                lastRandomInterruptTime = currentTime
 
-                if highRiskSpells.magical[castId] then
-                    if toggles.spellReflectEnabled then
-                        if spells.spell_reflect and spells.spell_reflect:ready() and spells.spell_reflect:castable(player) then
-                            local spellName = highRiskSpells.magical[castId] or "Unknown"
+                randomInterruptDelay = random(1, 2)
 
-                            Aurora.alert("高危法术技能: " .. spellName .. "!", 23920)
+                SetSkillCooldown("Shadowfury", 60)
 
-                            local success = spells.spell_reflect:cast(player)
-
-                            if success then
-                                combatStats.reflects = combatStats.reflects + 1
-                            end
-
-                            return success
-                        end
-                    end
-                end
-            end
-        end
-    end)
-
-
-
-    return false
-end
-
-
-
--- 智能英勇投掷
-
-local function SmartHeroicThrow()
-    if not spells.heroic_throw or not spells.heroic_throw:ready() then
-        return false
-    end
-
-
-
-    if target.distanceto(player) > 8 and target.distanceto(player) <= 30 then
-        return spells.heroic_throw:cast(target)
-    end
-
-
-
-    return false
-end
-
-
-
--- 【新增】智能姿态管理
-
-local function SmartStanceManagement()
-    local toggles = GetToggleState()
-
-
-
-    -- 如果智能姿态未启用，直接返回
-
-    if not toggles.smartStanceEnabled then
-        return false
-    end
-
-
-
-    -- 检查战斗中且有天神下凡buff时切换到战斗姿态
-
-    if player.combat and player.aura(107574) then
-        if spells.Battle_Stance and spells.Battle_Stance:ready() and spells.Battle_Stance:castable(player) then
-            -- 确保当前不是战斗姿态
-
-            if not player.aura(386164) then
-                local success = spells.Battle_Stance:cast(player)
-
-                if success then
-                    Aurora.alert("天神下凡 - 切换到战斗姿态", 386164)
-
-                    return true
-                end
-            end
-        end
-    end
-
-
-
-    -- 没有天神下凡buff时，确保在防御姿态
-
-    if not player.aura(107574) and not player.aura(386208) then
-        if spells.Defensive_Stance and spells.Defensive_Stance:ready() and spells.Defensive_Stance:castable(player) then
-            local success = spells.Defensive_Stance:cast(player)
-
-            if success then
                 return true
+
             end
-        end
-    end
 
-
-
-    return false
-end
-
-
-
--- 【强制检查】智能乘胜追击 - 直接使用状态栏控制
-
-local function SmartVictoryRush()
-    local toggles = GetToggleState()
-
-    if not toggles.victoryRushEnabled then
-        return false
-    end
-
-
-
-    if not spells.victory_rush or not spells.victory_rush:ready() then
-        return false
-    end
-
-
-
-    local victoryRushHealth = Aurora.Config:Read("MiracleWarrior.victory_rush_health") or 60
-
-
-
-    if player.hp < victoryRushHealth then
-        local success = spells.victory_rush:cast(target)
-
-        if success then
-            combatStats.victoryRushes = combatStats.victoryRushes + 1
-
-            return true
-        end
-    end
-
-
-
-    return false
-end
-
-
-
--- 【强制检查】智能集结呐喊 - 直接使用状态栏控制
-
-local function SmartRallyingCry()
-    local toggles = GetToggleState()
-
-    if not toggles.rallyingCryEnabled then
-        return false
-    end
-
-
-
-    if not spells.rallying_cry or not spells.rallying_cry:ready() then
-        return false
-    end
-
-
-
-    if not (player.group or player.raid) then
-        return false
-    end
-
-
-
-    if IsSkillOnCooldown("rallying_cry") then
-        return false
-    end
-
-
-
-    local rallyingCryHealth = Aurora.Config:Read("MiracleWarrior.rallying_cry_health") or 50
-
-
-
-    local totalHealth = 0
-
-    local totalMembers = 0
-
-    local lowHealthMembers = 0
-
-
-
-    if player.raid then
-        for i = 1, GetNumGroupMembers() do
-            local unit = Aurora.UnitManager:Get("raid" .. i)
-
-            if unit and unit.exists and unit.alive and unit.distanceto(player) <= 40 then
-                totalHealth = totalHealth + unit.hp
-
-                totalMembers = totalMembers + 1
-
-                if unit.hp < rallyingCryHealth then
-                    lowHealthMembers = lowHealthMembers + 1
-                end
-            end
-        end
-    elseif player.group then
-        for i = 1, GetNumGroupMembers() do
-            local unit = Aurora.UnitManager:Get("party" .. i)
-
-            if unit and unit.exists and unit.alive and unit.distanceto(player) <= 40 then
-                totalHealth = totalHealth + unit.hp
-
-                totalMembers = totalMembers + 1
-
-                if unit.hp < rallyingCryHealth then
-                    lowHealthMembers = lowHealthMembers + 1
-                end
-            end
         end
 
-
-
-        totalHealth = totalHealth + player.hp
-
-        totalMembers = totalMembers + 1
-
-        if player.hp < rallyingCryHealth then
-            lowHealthMembers = lowHealthMembers + 1
-        end
     end
 
 
 
-    local averageHealth = totalMembers > 0 and (totalHealth / totalMembers) or 100
+    -- 【新增】单体硬控：死亡缠绕
 
+    if GetConfig("use_mortal_coil_interrupt", true) and not IsSkillOnCooldown("Mortal_Coil") then
 
+        if spells.Mortal_Coil and spells.Mortal_Coil:ready() then
 
-    if averageHealth < rallyingCryHealth or lowHealthMembers >= 3 then
-        local success = spells.rallying_cry:cast(player)
+            -- 优先打断当前目标
 
-        if success then
-            combatStats.rallyingCries = combatStats.rallyingCries + 1
+            if target and target.exists and target.casting and target.castinginterruptible then
 
-            SetSkillCooldown("rallying_cry", 180)
+                local castId = target.castingspellid
 
-            return true
-        end
-    end
+                if interruptList[castId] then
 
+                    if spells.Mortal_Coil:cast(target) then
 
+                        lastRandomInterruptTime = currentTime
 
-    return false
-end
+                        randomInterruptDelay = random(1, 2)
 
-
-
--- 【修改】智能挫志怒吼 - 添加状态栏控制
-
-local function SmartDemoralizingShout()
-    local toggles = GetToggleState()
-
-    if not toggles.demoralizingShoutEnabled then
-        return false
-    end
-
-
-
-    if not spells.demoralizing_shout or not spells.demoralizing_shout:ready() or not spells.demoralizing_shout:castable(player) then
-        return false
-    end
-
-
-
-    if not (talents.booming_voice and talents.booming_voice:isknown()) then
-        return false
-    end
-
-
-
-    local enemyCount = player.enemiesaround(8) or 0
-
-    if enemyCount >= 1 then
-        if ShouldUseLongCooldownTeamAware() then
-            spells.demoralizing_shout:cast(player)
-
-            return true
-        end
-    end
-
-
-
-    return false
-end
-
-
-
--- 智能天神下凡
-
-local function SmartAvatar()
-    if not spells.avatar or not spells.avatar:ready() or not spells.avatar:castable(player) then
-        return false
-    end
-
-
-
-    if ShouldUseLongCooldownTeamAware() then
-        spells.avatar:cast(player)
-
-        return true
-    end
-
-
-
-    return false
-end
-
-
-
--- 毁灭者
-
-local function SmartRavager()
-    if not spells.Ravager or not spells.Ravager:ready() or not spells.Ravager:castable(player) then
-        return false
-    end
-
-    if ShouldUseLongCooldownTeamAware() then
-        return spells.Ravager:cast(player)
-    end
-end
-
-
-
--- 【强制检查】智能盾牌冲锋 - 直接使用状态栏控制
-
-local function SmartShieldCharge()
-    local toggles = GetToggleState()
-
-    if not toggles.shieldChargeEnabled then
-        return false
-    end
-
-
-
-    if not spells.shield_charge or not spells.shield_charge:ready() or not spells.shield_charge:castable(target) then
-        return false
-    end
-
-
-
-    if target.distanceto(player) <= 5 then
-        return spells.shield_charge:cast(target)
-    end
-
-
-
-    return false
-end
-
-
-
--- 【强制检查】智能嘲讽 - 直接使用状态栏控制
-
-local function Taunt()
-    local toggles = GetToggleState()
-
-    if not toggles.tauntEnabled then
-        return false
-    end
-
-
-
-    if not (player.group or player.raid) then
-        return false
-    end
-
-
-
-    local tauntTarget = nil
-
-    Aurora.enemies:within(10):each(function(enemy)
-        if tauntTarget then return true end
-
-
-
-        if enemy.exists and enemy.alive and enemy.enemy then
-            if enemy.target.exists and enemy.target.guid ~= player.guid then
-                if enemy.target.friend and enemy.target.player then
-                    if enemy.distanceto(player) <= 30 then
-                        tauntTarget = enemy
+                        SetSkillCooldown("Mortal_Coil", 45)
 
                         return true
+
                     end
+
                 end
+
             end
+
+
+
+            -- 打断其他危险目标
+
+            for _, enemy in ipairs(enemiesCastingDangerous) do
+
+                if spells.Mortal_Coil:castable(enemy) then
+
+                    if spells.Mortal_Coil:cast(enemy) then
+
+                        lastRandomInterruptTime = currentTime
+
+                        randomInterruptDelay = random(1, 2)
+
+                        SetSkillCooldown("Mortal_Coil", 45)
+
+                        return true
+
+                    end
+
+                end
+
+            end
+
         end
+
+    end
+
+
+
+    return false
+
+end
+
+
+
+-- 【修改】基础减伤技能链（仅与血量挂钩）
+
+local function BasicDefensiveChain()
+
+    if not IsToggleEnabled("DefensiveToggle") then return false end
+
+
+
+    local darkPactHealth = GetConfig("dark_pact_health", 40)
+
+    local unendingResolveHealth = GetConfig("unending_resolve_health", 20)
+
+    local mortalcoilhealth = GetConfig("mortal_coil_health", 60)
+
+
+
+    -- 极度危险状态 - 使用不灭决心
+
+    if player.hp < unendingResolveHealth then
+
+        if spells.Unending_Resolve:ready() and spells.Unending_Resolve:castable(player) then
+
+            return spells.Unending_Resolve:cast(player)
+
+        end
+
+    end
+
+
+
+    -- 一般危险状态 - 使用暗影契约
+
+    if player.hp < darkPactHealth then
+
+        if spells.Dark_Pact:ready() and spells.Dark_Pact:castable(player) then
+
+            return spells.Dark_Pact:cast(player)
+
+        end
+
+    end
+
+
+
+    -- 最简单危险状态 - 使用死亡缠绕
+
+    if player.hp < mortalcoilhealth then
+
+        if spells.Mortal_Coil:ready() and spells.Mortal_Coil:castable(target) then
+
+            return spells.Mortal_Coil:cast(target)
+
+        end
+
+    end
+
+
+
+    return false
+
+end
+
+
+
+-- 【修复】宠物召唤管理 - 确保配置正确生效
+
+local function PetManagement()
+
+    -- 检查是否启用自动召唤宠物
+
+    if not GetConfig("auto_summon_pet", true) then
+
+        return false
+
+    end
+
+    if player.aura(196099) then return false end --牺牲魔典
+
+    if HasActivePet() then return false end
+
+
+
+    local selectedPet = GetConfig("selected_pet", "felhunter")
+
+
+
+    -- 检查是否启用邪能统御
+
+    if GetConfig("use_fel_domination", true) then
+
+        if spells.Fel_Domination:ready() and spells.Fel_Domination:castable(player) then
+
+            spells.Fel_Domination:cast(player)
+
+        end
+
+    end
+
+
+
+    -- 根据设置召唤宠物
+
+    if selectedPet == "imp" and spells.summon_imp:ready() and spells.summon_imp:castable(player) then
+
+        return spells.summon_imp:cast(player)
+
+    elseif selectedPet == "voidwalker" and spells.summon_voidwalker:ready() and spells.summon_voidwalker:castable(player) then
+
+        return spells.summon_voidwalker:cast(player)
+
+    elseif selectedPet == "sayaad" and spells.summon_Sayaad:ready() and spells.summon_Sayaad:castable(player) then
+
+        return spells.summon_Sayaad:cast(player)
+
+    elseif selectedPet == "felhunter" and spells.summon_felhunter:ready() and spells.summon_felhunter:castable(player) then
+
+        return spells.summon_felhunter:cast(player)
+
+    end
+
+
+
+    return false
+
+end
+
+
+
+-- 【新增】牺牲魔典管理
+
+local function GrimoireManagement()
+
+    if talents.grimoire_of_sacrifice and talents.grimoire_of_sacrifice:isknown() then
+
+        if not player.aura(auras.grimoire_of_sacrifice_buff.spellId) then
+
+            if spells.grimoire_of_sacrifice:ready() and spells.grimoire_of_sacrifice:castable(player) then
+
+                return spells.grimoire_of_sacrifice:cast(player)
+
+            end
+
+        end
+
+    end
+
+    return false
+
+end
+
+
+
+-- 【修改】药水使用管理 - 修复配置读取
+
+local function SmartPotionUse()
+
+    local potionMode = GetConfig("potion_mode", "infernal")
+
+
+
+    -- 如果设置为"none"，则不使用药水
+
+    if potionMode == "none" then
+
+        return false
+
+    end
+
+
+
+    local healPotionHealth = GetConfig("heal_potion_health", 30)
+
+
+
+    -- 治疗药水逻辑 - 按品质从高到低使用
+
+    if player.hp < healPotionHealth then
+
+        local healPotions = { potions.heal_3star, potions.heal_2star, potions.heal_1star, potions.heal_Tang }
+
+        for _, potion in ipairs(healPotions) do
+
+            if potion:isknown() and potion:count() > 0 then
+
+                if potion:use(player) then
+
+                    return true
+
+                end
+
+            end
+
+        end
+
+    end
+
+
+
+    -- 爆发药水逻辑 - 按品质从高到低使用
+
+    if potionMode == "infernal" then
+
+        -- 地狱火召唤时使用爆发药水
+
+        if spells.summon_infernal:waslastcast(3) then
+
+            local burstPotions = { potions.burst_3star, potions.burst_2star, potions.burst_1star }
+
+            for _, potion in ipairs(burstPotions) do
+
+                if potion:isknown() and potion:count() > 0 then
+
+                    if potion:use(player) then
+
+                        return true
+
+                    end
+
+                end
+
+            end
+
+        end
+
+    elseif potionMode == "cd" then
+
+        -- 卡CD使用
+
+        local burstPotions = { potions.burst_3star, potions.burst_2star, potions.burst_1star }
+
+        for _, potion in ipairs(burstPotions) do
+
+            if potion and potion:ready() and potion:usable(player) and potion:count() > 0 then
+
+                if potion:use(player) then
+
+                    return true
+
+                end
+
+            end
+
+        end
+
+    end
+
+
+
+    return false
+
+end
+
+
+
+-- 【修改】饰品使用管理 - 修复配置读取
+
+local function SmartTrinketUse()
+
+    local trinketMode = GetConfig("trinket_mode", "infernal")
+
+
+
+    -- 如果设置为"none"，则不使用饰品
+
+    if trinketMode == "none" then
+
+        return false
+
+    end
+
+
+
+    if trinketMode == "infernal" then
+
+        -- 地狱火召唤时使用饰品
+
+        if spells.summon_infernal:waslastcast(3) then
+
+            -- 饰品1
+
+            local trinket1ID = GetInventoryItemID("player", 13)
+
+            if trinket1ID and trinket1ID > 0 then
+
+                local trinket1 = Aurora.ItemHandler.NewItem(trinket1ID)
+
+                if trinket1 and trinket1:ready() and trinket1:usable(player) then
+
+                    if trinket1:use(player) then
+
+                        return true
+
+                    end
+
+                end
+
+            end
+
+
+
+            -- 饰品2
+
+            local trinket2ID = GetInventoryItemID("player", 14)
+
+            if trinket2ID and trinket2ID > 0 then
+
+                local trinket2 = Aurora.ItemHandler.NewItem(trinket2ID)
+
+                if trinket2 and trinket2:ready() and trinket2:usable(player) then
+
+                    return trinket2:use(player)
+
+                end
+
+            end
+
+        end
+
+    elseif trinketMode == "cd" then
+
+        -- 卡CD使用饰品
+
+        local trinket1ID = GetInventoryItemID("player", 13)
+
+        if trinket1ID and trinket1ID > 0 then
+
+            local trinket1 = Aurora.ItemHandler.NewItem(trinket1ID)
+
+            if trinket1 and trinket1:ready() and trinket1:usable(player) then
+
+                if trinket1:use(player) then
+
+                    return true
+
+                end
+
+            end
+
+        end
+
+
+
+        local trinket2ID = GetInventoryItemID("player", 14)
+
+        if trinket2ID and trinket2ID > 0 then
+
+            local trinket2 = Aurora.ItemHandler.NewItem(trinket2ID)
+
+            if trinket2 and trinket2:ready() and trinket2:usable(player) then
+
+                return trinket2:use(player)
+
+            end
+
+        end
+
+    end
+
+
+
+    return false
+
+end
+
+
+
+-- 【修复】灵魂石战复功能
+
+local function SoulstoneBattleRes()
+
+    if not spells.Soulstone:ready() then
+
+        return false
+
+    end
+
+
+
+    local currentTime = GetTime()
+
+    local mouseoverUnit = Aurora.UnitManager:Get("mouseover")
+
+
+
+    -- 检查鼠标指向的单位是否符合战复条件
+
+    if mouseoverUnit and mouseoverUnit.exists then
+
+        -- 使用Aurora框架的属性检查死亡状态
+
+        if mouseoverUnit.dead and mouseoverUnit.player then
+
+            -- 检查是否可以施放灵魂石
+
+            if spells.Soulstone:castable(mouseoverUnit) then
+
+                -- 开始或更新指向时间
+
+                if soulstoneTargetGuid ~= mouseoverUnit.guid then
+
+                    soulstoneTargetGuid = mouseoverUnit.guid
+
+                    soulstoneTargetTime = currentTime
+
+                    print("开始指向战复目标: " .. mouseoverUnit.name)
+
+                else
+
+                    -- 检查是否指向超过1.5秒
+
+                    if currentTime > soulstoneTargetTime + 1.5 then
+
+                        local success = spells.Soulstone:cast(mouseoverUnit)
+
+                        if success then
+
+                            print("成功对 " .. mouseoverUnit.name .. " 使用灵魂石战复")
+
+                            soulstoneTargetGuid = nil
+
+                            soulstoneTargetTime = 0
+
+                        end
+
+                        return success
+
+                    end
+
+                end
+
+            end
+
+        else
+
+            -- 重置指向状态（如果指向了不符合条件的单位）
+
+            if soulstoneTargetGuid and soulstoneTargetGuid ~= mouseoverUnit.guid then
+
+                soulstoneTargetGuid = nil
+
+                soulstoneTargetTime = 0
+
+            end
+
+        end
+
+    else
+
+        -- 没有鼠标指向或单位不存在时重置
+
+        soulstoneTargetGuid = nil
+
+        soulstoneTargetTime = 0
+
+    end
+
+
+
+    return false
+
+end
+
+
+
+-- 【新增】计算当前拥有枯萎debuff的敌人数量
+
+local function CountWitherTargets()
+
+    local witherCount = 0
+
+    Aurora.enemies:within(40):each(function(enemy)
+
+        if enemy.exists and enemy.alive and enemy.combat then
+
+            if enemy.aura(445474) then
+
+                witherCount = witherCount + 1
+
+            end
+
+        end
+
+    end)
+
+    return witherCount
+
+end
+
+
+
+-- 【新增】寻找最需要补枯萎dot的目标
+
+local function FindBestWitherTarget()
+
+    local bestTarget = nil
+
+    local bestScore = -9999
+
+    local aoeThreshold = GetConfig("aoe_threshold", 3)
+
+
+
+    -- 【新增】检查补枯萎开关和最大目标数限制
+
+    if not IsToggleEnabled("WitherToggle") then
+
+        return nil
+
+    end
+
+
+
+    local witherMaxTargets = GetConfig("wither_max_targets", 10)
+
+    local currentWitherCount = CountWitherTargets()
+
+
+
+    -- 如果已经达到最大枯萎目标数，停止补枯萎
+
+    if currentWitherCount >= witherMaxTargets then
+
+        return nil
+
+    end
+
+
+
+    -- 如果敌人数量达到AOE阈值，优先使用AOE技能，不单独补dot
+
+    local active_enemies = player.enemiesaround(40)
+
+    if active_enemies >= aoeThreshold then
+
+        return nil
+
+    end
+
+
+
+    -- 遍历所有敌人，找到最需要补枯萎dot的目标
+
+    Aurora.enemies:within(40):each(function(enemy)
+
+        if enemy.exists and enemy.alive and enemy.combat then
+
+            local witherRemains = enemy.auraremains(445474) or 0
+
+            local ttd = TimeToDieRR(enemy, 0)
+
+
+
+            -- 计算分数：枯萎持续时间21秒，剩余时间越少，分数越高
+
+            -- 同时考虑目标存活时间，存活时间太短的目标收益低
+
+            local score = 21 - witherRemains - (ttd >= 14 and 0 or 14 - ttd)
+
+
+
+            if score > bestScore then
+
+                bestScore = score
+
+                bestTarget = enemy
+
+            end
+
+        end
+
     end)
 
 
 
-    if tauntTarget then
-        if spells.taunt and spells.taunt:ready() and spells.taunt:castable(tauntTarget) then
-            local success = spells.taunt:cast(tauntTarget)
+    return bestTarget
 
-            if success then
-                combatStats.taunts = combatStats.taunts + 1
-            end
+end
 
-            return success
+
+
+-- 【新增】补枯萎dot功能
+
+local function RefreshWitherDot()
+
+    if not spells.wither or not spells.wither:ready() then
+
+        return false
+
+    end
+
+
+
+    local bestWitherTarget = FindBestWitherTarget()
+
+    if bestWitherTarget and bestWitherTarget.auraremains(445474) < 5 then
+
+        if spells.wither:castable(bestWitherTarget) then
+
+            witherRefreshTarget = bestWitherTarget
+
+            return spells.wither:cast(bestWitherTarget)
+
         end
+
     end
 
 
 
     return false
+
 end
 
 
 
--- 【强制检查】增强减伤技能链 - 直接使用状态栏控制
+--拉怪补dot
 
-local function EnhancedDefensiveChain()
-    -- local toggles = GetToggleState()
+-- 【修正】拉怪补DOT模式管理
 
-    -- if not toggles.defensiveEnabled then
+local function PrepullDotManagement()
 
-    --     return false
+    -- 检查状态栏是否启用
 
-    -- end
+    if not IsToggleEnabled("PrepullToggle") then
 
+        return false
 
-
-    -- 最高优先级：盾牌格挡全程覆盖
-
-    if spells.shield_block and spells.shield_block:ready() and spells.shield_block:castable(player) then
-        local shieldBlockRemaining = player.auraremains(auras.shield_block_buff.spellId) or 0
-
-
-
-        if shieldBlockRemaining <= 2 or not player.aura(auras.shield_block_buff.spellId) then
-            if spells.shield_block:cast(player) then
-                shieldBlockTracker.lastCastTime = GetTime()
-
-                return true
-            end
-        end
     end
 
 
 
-    -- 无视苦痛 - 基于怒气管理
+    -- 统计所有需要补dot的敌人
 
-    if spells.ignore_pain and spells.ignore_pain:ready() and spells.ignore_pain:castable(player) then
-        local rageThreshold = Aurora.Config:Read("MiracleWarrior.rage_threshold") or 60
+    local enemiesNeedWither = 0
 
-        local currentRage = player.rage or 0
+    local bestTarget = nil
 
-        if currentRage >= rageThreshold then
-            if spells.ignore_pain:cast(player) then
-                return true
-            end
-        end
-    end
+    local bestScore = -9999
 
 
 
-    -- 盾墙和破釜沉舟
+    -- 遍历所有敌人，找到需要补dot的目标
 
-    local shieldWallHealth = Aurora.Config:Read("MiracleWarrior.shield_wall_health") or 70
+    Aurora.enemies:within(40):each(function(enemy)
 
-    local lastStandHealth = Aurora.Config:Read("MiracleWarrior.last_stand_health") or 40
+        if enemy.exists and enemy.alive and enemy.combat then
+
+            local witherRemains = enemy.auraremains(445474) or 0
+
+            -- 如果没有枯萎dot或剩余时间小于5秒，需要补dot
+
+            if witherRemains < 5 then
+
+                enemiesNeedWither = enemiesNeedWither + 1
 
 
 
-    -- 极度危险：血量低于破釜沉舟阈值
+                -- 计算分数：剩余时间越少，分数越高
 
-    if player.hp < lastStandHealth then
-        if spells.last_stand and spells.last_stand:ready() and spells.last_stand:castable(player) then
-            if not IsSkillOnCooldown("last_stand") then
-                local success = spells.last_stand:cast(player)
+                local score = 5 - witherRemains
 
-                if success then
-                    SetSkillCooldown("last_stand", 180)
+                if score > bestScore then
 
-                    return true
+                    bestScore = score
+
+                    bestTarget = enemy
+
                 end
+
             end
+
         end
 
-
-
-        if spells.shield_wall and spells.shield_wall:ready() and spells.shield_wall:castable(player) then
-            if spells.shield_wall:cast(player) then
-                return true
-            end
-        end
-    end
+    end)
 
 
 
-    -- 中度危险：血量低于盾墙阈值
+    -- 如果有需要补dot的目标，执行补dot
 
-    if player.hp < shieldWallHealth then
-        if spells.shield_wall and spells.shield_wall:ready() and spells.shield_wall:castable(player) then
-            if spells.shield_wall:cast(player) then
-                return true
-            end
-        end
+    if bestTarget and spells.wither and spells.wither:ready() and spells.wither:castable(bestTarget) then
+
+        return spells.wither:cast(bestTarget)
+
     end
 
 
 
     return false
+
+end
+
+-- 【新增】TTD冷却技能判断
+
+local function ShouldUseCooldown()
+
+    local ttdEnabled = GetConfig("ttd_enabled", true)
+
+    local ttdThreshold = GetConfig("ttd_threshold", 15)
+
+
+
+    if not ttdEnabled then
+
+        return true
+
+    end
+
+
+
+    if not target.exists then
+
+        return false
+
+    end
+
+
+
+    local targetTTD = TimeToDieRR(target, 0)
+
+    return targetTTD > ttdThreshold
+
 end
 
 
 
--- 战斗数据统计
+--移动补技能逻辑
 
-local function RecordCombatStats()
-    if not player.combat then
-        if combatStats.startTime > 0 then
-            local combatDuration = GetTime() - combatStats.startTime
+local function moveSpell()
 
-            if combatDuration > 10 then
-                print(string.format("战斗统计 - 持续时间: %.1f秒, 打断: %d次, 嘲讽: %d次, 反射: %d次, 乘胜追击: %d次, 集结呐喊: %d次",
+    if not (spells.conflagrate:ready() and spells.conflagrate:castable(target)) then
 
-                    combatDuration, combatStats.interrupts, combatStats.taunts, combatStats.reflects,
-                    combatStats.victoryRushes, combatStats.rallyingCries))
+        return false
+
+    end
+
+    if spells.conflagrate and spells.conflagrate:ready() and spells.conflagrate:castable(target) then
+
+        spells.conflagrate:cast(target)
+
+        return true
+
+    end
+
+
+
+    if not (spells.shadowburn and spells.shadowburn:ready()) then
+
+        return false
+
+    end
+
+    if spells.shadowburn and spells.shadowburn:ready() then
+
+        return spells.shadowburn:cast(target)
+
+    end
+
+end
+
+-- 【重写】智能暗影灼烧功能 - 按照最佳实践重写
+
+local function SmartShadowburn()
+
+    -- 检查暗影灼烧状态栏是否启用
+
+    if not IsToggleEnabled("ShadowburnToggle") then
+
+        return false
+
+    end
+
+
+
+    if not spells.shadowburn or not spells.shadowburn:ready() then
+
+        return false
+
+    end
+
+
+
+    local soul_shard = player.soulshards or 0
+
+    local aoeThreshold = GetConfig("aoe_threshold", 3)
+
+    local active_enemies = player.enemiesaround(40)
+
+
+
+    -- 条件1：目标即将在5秒内死亡 - 使用暗影灼烧获取碎片返还
+
+    if target.exists and target.alive and target.combat then
+
+        local ttd = TimeToDieRR(target, 0)
+
+        if ttd <= 5 then
+
+            if spells.shadowburn:castable(target) then
+
+                return spells.shadowburn:cast(target)
+
             end
 
-            combatStats.startTime = 0
-
-            combatStats.interrupts = 0
-
-            combatStats.taunts = 0
-
-            combatStats.reflects = 0
-
-            combatStats.victoryRushes = 0
-
-            combatStats.rallyingCries = 0
         end
 
-        return
     end
 
 
 
-    if combatStats.startTime == 0 then
-        combatStats.startTime = GetTime()
+    -- 条件2：灵魂碎片即将溢出（>=4）且无法对3个或更少敌人施放混乱箭
 
-        combatStats.interrupts = 0
+    if soul_shard >= 4 then
 
-        combatStats.taunts = 0
+        -- 检查是否无法使用混乱箭（敌人数量>3、移动中、或者其他原因）
 
-        combatStats.reflects = 0
+        local cannotCastChaosBolt = active_enemies > aoeThreshold or
 
-        combatStats.victoryRushes = 0
+            player.moving or
 
-        combatStats.rallyingCries = 0
-    end
-end
+            not spells.chaos_bolt:ready() or
 
-
-
--- 智能雷霆一击
-
-local function SmartThunderClap()
-    if not spells.thunder_clap or not spells.thunder_clap:ready() or not spells.thunder_clap:castable(player) then
-        return false
-    end
+            not spells.chaos_bolt:castable(target)
 
 
 
-    if target.distanceto(player) > 8 then
-        return false
+        if cannotCastChaosBolt then
+
+            if spells.shadowburn:castable(target) then
+
+                return spells.shadowburn:cast(target)
+
+            end
+
+        end
+
     end
 
 
 
-    local overpowerState = GetOverpowerState()
+    -- 条件3：暗影灼烧即将冷却结束且有2层充能，或者需要移动时
 
-    local hasSevereThunder = player.aura(1252096)
+    local charges = spells.shadowburn:charges() or 0
+
+    local maxCharges = spells.shadowburn:maxcharges() or 2
+
+    local timeToNextCharge = spells.shadowburn:timetonextcharge() or 0
 
 
 
-    if overpowerState.isReady then
-        return spells.thunder_clap:cast(player)
+    -- 即将获得充能且当前充能接近满层
+
+    if (charges >= maxCharges - 1 and timeToNextCharge < 2) or player.moving then
+
+        if spells.shadowburn:castable(target) then
+
+            return spells.shadowburn:cast(target)
+
+        end
+
     end
 
 
 
-    if hasSevereThunder then
-        return spells.thunder_clap:cast(player)
+    -- 条件4：目标血量低于30%且拥有特定天赋（这里需要检测天赋，暂时用通用逻辑）
+
+    if target.exists and target.alive and target.hp < 30 then
+
+        if spells.Kureshuaijie:isknown() then
+
+            local shouldUseInExecute = soul_shard >= 2 or player.moving or charges >= maxCharges - 1
+
+
+
+            if shouldUseInExecute and spells.shadowburn:castable(target) then
+
+                return spells.shadowburn:cast(target)
+
+            end
+
+        end
+
     end
 
 
 
-    local enemyCount = player.enemiesaround(8) or 0
-
-    if enemyCount >= 1 then
-        return spells.thunder_clap:cast(player)
-    end
 
 
+    -- 条件5：寻找即将死亡的低血量目标
 
-    return false
-end
+    local lowestHealthTarget = nil
 
+    local lowestHealth = 100
 
-
--- 智能盾牌猛击
-
-local function SmartShieldSlam()
-    if not spells.shield_slam or not spells.shield_slam:ready() or not spells.shield_slam:castable(target) then
-        return false
-    end
+    local lowHealthTargets = {}
 
 
 
-    return spells.shield_slam:cast(target)
-end
+    Aurora.enemies:within(40):each(function(enemy)
 
+        if enemy.exists and enemy.alive and enemy.combat then
 
+            -- 收集所有血量低于40%的目标
 
--- 智能战斗怒吼（新增队友buff检查逻辑）
+            if enemy.hp < 40 then
 
-local function SmartBattleShout()
-    local battleShoutEnabled = Aurora.Config:Read("MiracleWarrior.battle_shout_enabled") or true
+                table.insert(lowHealthTargets, enemy)
 
+                if enemy.hp < lowestHealth then
 
+                    lowestHealth = enemy.hp
 
-    -- 配置关闭则直接返回
+                    lowestHealthTarget = enemy
 
-    if not battleShoutEnabled then
-        return false
-    end
-
-
-
-    -- 检查技能是否可用
-
-    if not spells.Battle_Shout or not spells.Battle_Shout:ready() or not spells.Battle_Shout:castable(player) then
-        return false
-    end
-
-
-
-    -- 战斗怒吼aura ID（保持原有正确配置）
-
-    local BATTLE_SHOUT_AURA = 6673
-
-
-
-    -- 1. 队伍/团队场景：检查所有成员是否缺少buff
-
-    if player.group or player.raid then
-        local missingBuffMember = false
-
-
-
-        -- 遍历完整队伍（包含玩家自己，Aurora.fgroup = 含玩家的全组列表）
-
-        Aurora.fgroup:each(function(member)
-            -- 跳过不存在、已死亡的成员
-
-            if member.exists and member.alive then
-                -- 检查成员是否没有战斗怒吼aura
-
-                if not member.aura(BATTLE_SHOUT_AURA) then
-                    missingBuffMember = true
-
-                    return true -- 中断遍历，无需检查其他成员
                 end
+
             end
-        end)
 
-
-
-        -- 存在缺少buff的成员，释放技能
-
-        if missingBuffMember then
-            return spells.Battle_Shout:cast(player)
         end
-    end
+
+    end)
 
 
 
-    -- 2. 单人场景：保留原有逻辑（非战斗状态+自身无buff时释放）
+    -- 对最低血量目标使用暗影灼烧
 
-    if not player.combat and not player.aura(BATTLE_SHOUT_AURA) then
-        return spells.Battle_Shout:cast(player)
+    if lowestHealthTarget and spells.shadowburn:castable(lowestHealthTarget) then
+
+        -- 小怪即将死亡（5秒内）时优先使用
+
+        local ttd = TimeToDieRR(lowestHealthTarget, 0)
+
+        if ttd <= 5 then
+
+            return spells.shadowburn:cast(lowestHealthTarget)
+
+        end
+
+
+
+        -- 在AOE战斗中，对低血量目标使用暗影灼烧
+
+        if active_enemies > aoeThreshold and lowestHealthTarget.hp < 30 then
+
+            return spells.shadowburn:cast(lowestHealthTarget)
+
+        end
+
     end
 
 
 
     return false
+
 end
 
 
 
--- 主战斗循环
+
+
+-- 冷却技能列表（按顺序执行）
 
 local function Dps()
-    RecordCombatStats()
 
-    UpdateRagingBlowState()
+    --移动补技能逻辑
 
+    if player.moving then
 
+        if moveSpell() then
 
-
-
-    -- 第一优先级：减伤链
-
-    if EnhancedDefensiveChain() then
-        return true
-    end
-
-
-
-    -- 第二优先级：高危技能防御（已整合法术反射和石像形态）
-
-    if HighRiskSpellDefense() then
-        return true
-    end
-
-
-
-
-
-    -- 第三优先级：药水使用
-
-    if SmartPotionUse() then
-        return true
-    end
-
-
-
-    -- 第四优先级：饰品使用
-
-    if SmartTrinketUse() then
-        return true
-    end
-
-
-
-    -- 第五优先级：进攻冷却技能
-
-    if Aurora.Rotation.Cooldown:GetValue() then
-        if SmartRavager() then
             return true
+
         end
 
+    end
+
+    -- 定义过滤函数：只统计"存活"且"在战斗中"的敌人
+
+    local combatEnemyFilter = function(unit)
+
+        return unit.alive     -- 单位存活
+
+            and unit.incombat -- 单位在战斗中
+
+            and unit.enemy    -- 单位是敌对目标（默认已包含，可省略）
+
+    end
 
 
-        if SmartAvatar() then
+
+    -- 获取玩家40码范围内"存活且在战斗中"的敌人数量
+
+    local active_enemies = player.enemiesaround(40, combatEnemyFilter)
+
+
+
+    -- 【新增】获取AOE阈值配置
+
+    local aoeThreshold = GetConfig("aoe_threshold", 3)
+
+
+
+    -- 【新增】获取大灾变AOE阈值
+
+    local cataclysmThreshold = GetConfig("cataclysm_threshold", 3)
+
+
+
+    -- 获取当前灵魂碎片数量（若为nil则默认0，避免报错）
+
+    local soul_shard = player.soulshards or 0
+
+
+
+    -- 【修正】优先级0：拉怪补DOT模式 - 如果开启则只执行这个逻辑
+
+    if IsToggleEnabled("PrepullToggle") then
+
+        return PrepullDotManagement()
+
+    end
+
+
+
+    -- 【新增】优先级0.5：火跑管理
+
+    if BurningRushManagement() then
+
+        return true
+
+    end
+
+
+
+    -- 只在没有宠物时才召唤
+
+    if not HasActivePet() then
+
+        if PetManagement() then return true end
+
+    end
+
+
+
+    -- 【新增】优先级1：灵魂石战复
+
+    if SoulstoneBattleRes() then return true end
+
+
+
+    -- 【新增】优先级2：防御
+
+    if BasicDefensiveChain() then return true end
+
+
+
+    if SmartInterrupts() then
+
+        return true
+
+    end
+
+
+
+    if HardControlInterrupts() then
+
+        return true
+
+    end
+
+
+
+    -- 【新增】优先级4：药水使用
+
+    if SmartPotionUse() then return true end
+
+
+
+    -- 【新增】优先级5：饰品使用
+
+    if SmartTrinketUse() then return true end
+
+
+
+
+
+
+
+    -- 【新增】优先级6：补枯萎dot（在大灾变CD或敌人数量不足时）
+
+    if active_enemies < aoeThreshold or not spells.cataclysm:ready() then
+
+        if RefreshWitherDot() then
+
             return true
+
         end
 
-
-
-        if SmartDemoralizingShout() then
-            return true
-        end
+    end
 
 
 
-        if spells.thunderous_roar and spells.thunderous_roar:ready() and spells.thunderous_roar:castable(player) then
-            if target.distanceto(player) <= 12 and ShouldUseLongCooldownTeamAware() then
-                if spells.thunderous_roar:cast(player) then
-                    return true
+    -- 【修改】AOE技能添加聚拢检测
+
+    local shouldUseAOE = ShouldUseAOE()
+
+
+
+    -- actions.assisted_combat+=/cataclysm --大灾变
+
+    if spells.cataclysm:isknown() and spells.cataclysm:ready() and spells.cataclysm:castable(player) then
+
+        if active_enemies >= cataclysmThreshold and shouldUseAOE then
+
+            spells.cataclysm:smartaoe(target, {
+
+                offsetMin = 0,  -- 最小偏移距离（避免贴脸）
+
+                offsetMax = 40, -- 最大偏移距离（限制释放范围）
+
+                filter = function(unit, distance, position)
+
+                    -- 过滤条件：只统计存活的敌人
+
+                    return unit.enemy and unit.alive
+
                 end
-            end
-        end
-    end
 
-    --衍生：智能姿态
+            })
 
-    if SmartStanceManagement() then
-        return true
-    end
-
-
-
-    -- 第六优先级：集结呐喊
-
-    if SmartRallyingCry() then
-        return true
-    end
-
-
-
-    -- 第七优先级：乘胜追击治疗
-
-    if SmartVictoryRush() then
-        return true
-    end
-
-
-
-    -- 第八优先级：嘲讽保护队友
-
-    if Taunt() then
-        return true
-    end
-
-
-
-    -- 第九优先级：打断关键法术
-
-    if Interrupts() then
-        return true
-    end
-
-
-
-
-
-    -- 第十优先级：智能雷霆一击
-
-    if SmartThunderClap() then
-        return true
-    end
-
-
-
-    -- 第十三优先级：盾牌冲锋
-
-    if SmartShieldCharge() then
-        return true
-    end
-
-
-
-    -- 第十一优先级：智能盾猛
-
-    if SmartShieldSlam() then
-        return true
-    end
-
-
-
-    -- 第十二优先级：英勇投掷
-
-    if SmartHeroicThrow() then
-        return true
-    end
-
-
-
-
-
-    -- 输出循环
-
-    if spells.AutoAttack and spells.AutoAttack:ready() and spells.AutoAttack:castable(target) then
-        if spells.AutoAttack:cast(target) then
             return true
+
         end
+
     end
 
 
 
-    if spells.Champions_spear and spells.Champions_spear:ready() and spells.Champions_spear:castable(target) then
-        if target.distanceto(player) <= 25 then
-            if spells.Champions_spear:cast(target) then
-                return true
-            end
-        end
-    end
+    -- actions.assisted_combat+=/wither,if=!dot.immolate.ticking&!talent.wither --枯萎
 
+    if spells.wither and spells.wither:ready() and spells.wither:castable(target) then
 
+        if not target.aura(auras.immolate) and not talents.wither_talent then
 
-    if spells.demolish and spells.demolish:ready() and spells.demolish:castable(player) then
-        if spells.demolish:cast(player) then
+            spells.wither:cast(target)
+
             return true
+
         end
+
     end
 
 
 
-    local rageThreshold = Aurora.Config:Read("MiracleWarrior.rage_threshold") or 60
+    -- actions.assisted_combat+=/wither,if=!dot.wither.ticking&talent.wither --枯萎
 
-    if spells.ignore_pain and spells.ignore_pain:ready() and spells.ignore_pain:castable(player) then
-        if player.rage >= rageThreshold then
-            if spells.ignore_pain:cast(player) then
-                return true
-            end
+    if spells.wither and spells.wither:ready() and spells.wither:castable(target) then
+
+        if not target.aura(445474) and talents.wither_talent then
+
+            spells.wither:cast(target)
+
+            return true
+
         end
+
     end
 
 
 
-    if spells.revenge and spells.revenge:ready() and spells.revenge:castable(player) then
-        if spells.revenge:timeSinceLastCast() < 3 then
-            return false
-        elseif player.rage > 20 then
-            if spells.revenge:cast(player) then
-                return true
-            end
+    -- 【修改】冷却技能判断 - 加入TTD条件
+
+    if IsToggleEnabled("BigBurstToggle") and ShouldUseCooldown() then --cooldown
+
+        -- actions.cooldowns+=/blood_fury（兽人种族技能）
+
+        if spells.blood_fury:isknown() and spells.blood_fury:ready() and spells.blood_fury:castable(player) then
+
+            spells.blood_fury:cast(player)
+
+            return true
+
         end
+
+
+
+        -- actions.cooldowns+=/berserking（巨魔种族技能）
+
+        if spells.berserking:isknown() and spells.berserking:ready() and spells.berserking:castable(player) then
+
+            spells.berserking:cast(player)
+
+            return true
+
+        end
+
+
+
+        -- actions.cooldowns+=/fireblood（火焰之血种族技能）
+
+        if spells.fireblood:isknown() and spells.fireblood:ready() and spells.fireblood:castable(player) then
+
+            spells.fireblood:cast(player)
+
+            return true
+
+        end
+
+
+
+        -- actions.cooldowns+=/ancestral_call（先祖召唤种族技能）
+
+        if spells.ancestral_call and spells.ancestral_call:ready() and spells.ancestral_call:castable(player) then
+
+            spells.ancestral_call:cast(player)
+
+            return true
+
+        end
+
+
+
+        -- actions.cooldowns+=/summon_infernal --地狱火
+
+
+
+        if spells.summon_infernal:isknown() and spells.summon_infernal:ready() and spells.summon_infernal:castable(player) then
+
+            spells.summon_infernal:smartaoe(target, {
+
+                offsetMin = 0,  -- 最小偏移距离（避免贴脸）
+
+                offsetMax = 40, -- 最大偏移距离（限制释放范围）
+
+                filter = function(unit, distance, position)
+
+                    -- 过滤条件：只统计存活的敌人
+
+                    return unit.enemy and unit.alive
+
+                end
+
+            })
+
+            return true
+
+        end
+
+    end
+
+
+
+    -- actions.assisted_combat+=/malevolence --怨毒
+
+    if IsToggleEnabled("SmallBurstToggle") and ShouldUseCooldown() then
+
+        if spells.malevolence and spells.malevolence:ready() and spells.malevolence:castable(player) then
+
+            spells.malevolence:cast(player)
+
+            return true
+
+        end
+
+    end
+
+
+
+    -- actions.assisted_combat+=/infernal_bolt,if=buff.infernal_bolt.up&buff.infernal_bolt.remains<=5 --狱火箭
+
+    if spells.infernal_bolt and spells.infernal_bolt:ready() and spells.infernal_bolt:castable(target) then
+
+        if player.aura(433891) and player.auraremains(433891) <= 5 then
+
+            spells.infernal_bolt:cast(target)
+
+            return true
+
+        end
+
+    end
+
+
+
+    -- actions.assisted_combat+=/incinerate,if=buff.infernal_bolt.up&buff.infernal_bolt.remains<=5 --烧尽
+
+    if spells.incinerate and spells.incinerate:ready() and spells.incinerate:castable(target) then
+
+        if player.aura(433891) and player.auraremains(433891) <= 5 then
+
+            spells.incinerate:cast(target)
+
+            return true
+
+        end
+
+    end
+
+
+
+    -- actions.assisted_combat+=/channel_demonfire,if=target.distance<=40  --引导恶魔之火
+
+    if spells.channel_demonfire and spells.channel_demonfire:ready() and spells.channel_demonfire:castable(player) then
+
+        if target:distanceto(player) <= 40 then
+
+            spells.channel_demonfire:cast(player)
+
+            return true
+
+        end
+
+    end
+
+
+
+    -- 【修改】火焰之雨 - 使用AOE阈值配置和聚拢检测
+
+    if spells.rain_of_fire:isknown() and spells.rain_of_fire:ready() and spells.rain_of_fire:castable(player) then
+
+        if active_enemies >= aoeThreshold and shouldUseAOE then
+
+            spells.rain_of_fire:smartaoe(player, {
+
+                offsetMin = 0,  -- 最小偏移距离（避免贴脸）
+
+                offsetMax = 40, -- 最大偏移距离（限制释放范围）
+
+                filter = function(unit, distance, position)
+
+                    -- 过滤条件：只统计存活的敌人
+
+                    return unit.enemy and unit.alive
+
+                end
+
+            })
+
+            return true
+
+        end
+
+    end
+
+
+
+    -- actions.assisted_combat+=/soul_fire,if=buff.decimation.up&soul_shard<=4 --灵魂之火
+
+    if spells.soul_fire and spells.soul_fire:ready() and spells.soul_fire:castable(target) then
+
+        if player.aura(457555) and soul_shard <= 4 then --屠戮buff 457555 5个碎片自动获得
+
+            spells.soul_fire:cast(target)
+
+            return true
+
+        end
+
+    end
+
+
+
+
+
+
+
+    -- backdraft 117828 爆燃buff
+
+    -- actions.assisted_combat+=/conflagrate,if=buff.backdraft.down&soul_shard>=1.5&active_enemies<=2 --燃烧
+
+    if spells.conflagrate and spells.conflagrate:ready() and spells.conflagrate:castable(target) then
+
+        if not player.aura(117828) and soul_shard >= 1.5 and active_enemies <= aoeThreshold then
+
+            spells.conflagrate:cast(target)
+
+            return true
+
+        end
+
+    end
+
+
+
+    -- 【修改】陨灭和混乱箭 - 添加状态栏开关控制
+
+    if IsToggleEnabled("RuinationToggle") then
+
+        -- actions.assisted_combat+=/ruination,if=active_enemies<=2&soul_shard>=4,cooldown_allow_casting_success=1
+
+        if spells.ruination and spells.ruination:ready() and spells.ruination:castable(target) then
+
+            if soul_shard >= 4 and active_enemies <= aoeThreshold then
+
+                spells.chaos_bolt:cast(target)
+
+                return true
+
+            end
+
+        end
+
+
+
+        -- actions.assisted_combat+=/ruination,if=active_enemies<=2&soul_shard>=2&buff.ritual_of_ruin.up,cooldown_allow_casting_success=1
+
+        if spells.ruination and spells.ruination:ready() and spells.ruination:castable(target) then
+
+            if soul_shard >= 4 and active_enemies <= aoeThreshold and player.aura(387157) then
+
+                spells.chaos_bolt:cast(target)
+
+                return true
+
+            end
+
+        end
+
+
+
+        -- actions.assisted_combat+=/ruination,if=active_enemies<=2
+
+        if spells.ruination and spells.ruination:ready() and spells.ruination:castable(target) then
+
+            spells.chaos_bolt:cast(target)
+
+            return true
+
+        end
+
+    end
+
+
+
+    -- actions.assisted_combat+=/chaos_bolt,if=active_enemies<=2&soul_shard>=4,cooldown_allow_casting_success=1
+
+    if spells.chaos_bolt and spells.chaos_bolt:ready() and spells.chaos_bolt:castable(target) then
+
+        if soul_shard >= 4 and active_enemies <= aoeThreshold then
+
+            spells.chaos_bolt:cast(target)
+
+            return true
+
+        end
+
+    end
+
+
+
+    -- actions.assisted_combat+=/chaos_bolt,if=active_enemies<=2&soul_shard>=2&buff.ritual_of_ruin.up,cooldown_allow_casting_success=1
+
+    if spells.chaos_bolt and spells.chaos_bolt:ready() and spells.chaos_bolt:castable(target) then
+
+        if soul_shard >= 4 and active_enemies <= aoeThreshold and player.aura(387157) then
+
+            spells.chaos_bolt:cast(target)
+
+            return true
+
+        end
+
+    end
+
+
+
+    -- actions.assisted_combat+=/chaos_bolt,if=active_enemies<=2
+
+    if spells.chaos_bolt and spells.chaos_bolt:ready() and spells.chaos_bolt:castable(target) then
+
+        if active_enemies <= aoeThreshold then
+
+            spells.chaos_bolt:cast(target)
+
+            return true
+
+        end
+
+    end
+
+
+
+    -- 【修改】暗影灼烧 - 使用智能暗影灼烧功能
+
+    if SmartShadowburn() then
+
+        return true
+
+    end
+
+
+
+
+
+    -- actions.assisted_combat+=/dimensional_rift
+
+    if spells.dimensional_rift and spells.dimensional_rift:ready() and spells.dimensional_rift:castable(target) then
+
+        spells.dimensional_rift:cast(target)
+
+        return true
+
+    end
+
+
+
+    -- actions.assisted_combat+=/infernal_bolt,if=buff.backdraft.stack>=2
+
+    if spells.infernal_bolt and spells.infernal_bolt:ready() and spells.infernal_bolt:castable(target) then
+
+        if player.auracount(117828) >= 2 then
+
+            spells.infernal_bolt:cast(target)
+
+            return true
+
+        end
+
+    end
+
+
+
+    -- actions.assisted_combat+=/incinerate,if=buff.backdraft.stack>=2
+
+    if spells.incinerate and spells.incinerate:ready() and spells.incinerate:castable(target) then
+
+        if player.auracount(117828) >= 2 then
+
+            spells.incinerate:cast(target)
+
+            return true
+
+        end
+
+    end
+
+
+
+    -- actions.assisted_combat+=/conflagrate,if=charges>=2
+
+    if spells.conflagrate and spells.conflagrate:ready() and spells.conflagrate:castable(target) then
+
+        if spells.conflagrate:charges() >= 2 then
+
+            spells.conflagrate:cast(target)
+
+            return true
+
+        end
+
+    end
+
+
+
+    -- actions.assisted_combat+=/infernal_bolt,cooldown_allow_casting_success=1
+
+    if spells.infernal_bolt and spells.infernal_bolt:ready() and spells.infernal_bolt:castable(target) then
+
+        spells.infernal_bolt:cast(target)
+
+        return true
+
+    end
+
+
+
+    -- actions.assisted_combat+=/incinerate,cooldown_allow_casting_success=1
+
+    if spells.incinerate and spells.incinerate:ready() and spells.incinerate:castable(target) then
+
+        spells.incinerate:cast(target)
+
+        return true
+
+    end
+
+
+
+    -- actions.assisted_combat+=/infernal_bolt
+
+    if spells.infernal_bolt and spells.infernal_bolt:ready() and spells.infernal_bolt:castable(target) then
+
+        spells.infernal_bolt:cast(target)
+
+        return true
+
+    end
+
+
+
+    -- actions.assisted_combat+=/incinerate
+
+    if spells.incinerate and spells.incinerate:ready() and spells.incinerate:castable(target) then
+
+        spells.incinerate:cast(target)
+
+        return true
+
     end
 
 
 
     return false
+
 end
 
 
 
 local function Ooc()
-    lastRage = player.rage
 
-    rageConsumed = 0
+    -- 【修改】非战斗状态宠物和魔典管理 - 只在没有宠物时才召唤
 
-    ragingBlowReady = false
+    if not HasActivePet() then
 
+        if PetManagement() then return true end
 
-
-
-
-    if not player.combat then
-        SmartBattleShout()
     end
 
-    -- 【修改】在非战斗状态也检查智能姿态
 
-    local toggles = GetToggleState()
 
-    if toggles.smartStanceEnabled then
-        -- 非战斗状态下确保在防御姿态
+    -- 【新增】非战斗状态火跑管理
 
-        if not player.aura(386208) then
-            if spells.Defensive_Stance and spells.Defensive_Stance:ready() and spells.Defensive_Stance:castable(player) then
-                spells.Defensive_Stance:cast(player)
-            end
+    if GetConfig("burning_rush_ooc", false) then
+
+        if BurningRushManagement() then
+
+            return true
+
         end
-    else
-        -- 如果智能姿态未启用，使用原来的逻辑
 
-        if not player.aura(386208) then
-            if spells.Defensive_Stance and spells.Defensive_Stance:ready() and spells.Defensive_Stance:castable(player) then
-                spells.Defensive_Stance:cast(player)
-            end
-        end
     end
+
+
+
+    if GrimoireManagement() then return true end
+
+
+
+    return false
+
 end
 
 
 
--- 注册自定义宏命令
-
-Aurora.Macro:RegisterCommand("taunt", function()
-    if Aurora.Rotation.TauntToggle then
-        local current = Aurora.Rotation.TauntToggle:GetValue()
-
-        Aurora.Rotation.TauntToggle:SetValue(not current)
-
-        print("嘲讽: " .. (not current and "启用" or "禁用"))
-    end
-end, "切换嘲讽状态")
-
-
-
-Aurora.Macro:RegisterCommand("defensive", function()
-    if Aurora.Rotation.DefensiveToggle then
-        local current = Aurora.Rotation.DefensiveToggle:GetValue()
-
-        Aurora.Rotation.DefensiveToggle:SetValue(not current)
-
-        print("减伤: " .. (not current and "启用" or "禁用"))
-    end
-end, "切换减伤状态")
-
-
-
-Aurora.Macro:RegisterCommand("reflect", function()
-    if Aurora.Rotation.SpellReflectToggle then
-        local current = Aurora.Rotation.SpellReflectToggle:GetValue()
-
-        Aurora.Rotation.SpellReflectToggle:SetValue(not current)
-
-        print("反射: " .. (not current and "启用" or "禁用"))
-    end
-end, "切换反射状态")
-
-
-
-Aurora.Macro:RegisterCommand("victory", function()
-    if Aurora.Rotation.VictoryRushToggle then
-        local current = Aurora.Rotation.VictoryRushToggle:GetValue()
-
-        Aurora.Rotation.VictoryRushToggle:SetValue(not current)
-
-        print("乘胜: " .. (not current and "启用" or "禁用"))
-    end
-end, "切换乘胜追击状态")
-
-
-
-Aurora.Macro:RegisterCommand("rally", function()
-    if Aurora.Rotation.RallyingCryToggle then
-        local current = Aurora.Rotation.RallyingCryToggle:GetValue()
-
-        Aurora.Rotation.RallyingCryToggle:SetValue(not current)
-
-        print("集结: " .. (not current and "启用" or "禁用"))
-    end
-end, "切换集结呐喊状态")
-
-
-
-Aurora.Macro:RegisterCommand("charge", function()
-    if Aurora.Rotation.ShieldChargeToggle then
-        local current = Aurora.Rotation.ShieldChargeToggle:GetValue()
-
-        Aurora.Rotation.ShieldChargeToggle:SetValue(not current)
-
-        print("盾冲: " .. (not current and "启用" or "禁用"))
-    end
-end, "切换盾牌冲锋状态")
-
-
-
-Aurora.Macro:RegisterCommand("hardcontrol", function()
-    if Aurora.Rotation.HardControlInterruptToggle then
-        local current = Aurora.Rotation.HardControlInterruptToggle:GetValue()
-
-        Aurora.Rotation.HardControlInterruptToggle:SetValue(not current)
-
-        print("硬控: " .. (not current and "启用" or "禁用"))
-    end
-end, "切换硬控打断状态")
-
-
-
--- 【新增】挫志怒吼宏命令
-
-Aurora.Macro:RegisterCommand("shout", function()
-    if Aurora.Rotation.DemoralizingShoutToggle then
-        local current = Aurora.Rotation.DemoralizingShoutToggle:GetValue()
-
-        Aurora.Rotation.DemoralizingShoutToggle:SetValue(not current)
-
-        print("挫志怒吼: " .. (not current and "启用" or "禁用"))
-    end
-end, "切换挫志怒吼状态")
-
-
-
--- 【新增】智能姿态宏命令
-
-Aurora.Macro:RegisterCommand("smartstance", function()
-    if Aurora.Rotation.SmartStanceToggle then
-        local current = Aurora.Rotation.SmartStanceToggle:GetValue()
-
-        Aurora.Rotation.SmartStanceToggle:SetValue(not current)
-
-        print("智能姿态: " .. (not current and "启用" or "禁用"))
-    end
-end, "切换智能姿态状态")
-
-
-
--- 注册主循环
+-- 注册循环
 
 Aurora:RegisterRoutine(function()
-    if player.dead or player.aura("Food") or player.aura("Drink") then
+
+    -- 【修改】检测下坐骑状态
+
+    if player.mounted then
+
+        lastDismountTime = GetTime() -- 更新下坐骑时间
+
         return
+
+    end
+
+
+
+    -- 跳过死亡、进食、饮水状态
+
+    if player.dead or player.aura("Food") or player.aura("Drink") or player.mounted then
+
+        return
+
     end
 
 
 
     if player.combat then
+
         Dps()
+
     else
+
         Ooc()
+
     end
-end, "WARRIOR", 3, "MiracleWarrior")
+
+end, "WARLOCK", 3, "RoyWarlock") -- 对应专精ID和命名空间
 
 
 
--- 检查循环版本
+-- 【新增】版本检查
+
+local function CheckRotationVersion()
+
+    local lastVersion = Aurora.Config:Read("RoyWarlock.rotation_version") or "0"
+
+    if lastVersion ~= ROTATION_VERSION then
+
+        print("=== RoyWarlock 循环已更新 ===")
+
+        print("版本: " .. ROTATION_VERSION)
+
+        print("• 新增大灾变单独AOE阈值")
+
+        print("• 删除默认状态栏，新增小爆发/大爆发状态栏")
+
+        print("• 优化状态栏控制逻辑")
+
+        print("=============================")
+
+        Aurora.Config:Write("RoyWarlock.rotation_version", ROTATION_VERSION)
+
+    end
+
+end
+
+
 
 CheckRotationVersion()
 
+print("RoyWarlock " .. ROTATION_VERSION .. " 循环已加载!")
 
-
-
-
-print("MiracleWarrior " .. ROTATION_VERSION .. " 循环已加载!")
