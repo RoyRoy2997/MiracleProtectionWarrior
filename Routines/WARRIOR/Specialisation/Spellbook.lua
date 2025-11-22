@@ -1,147 +1,131 @@
--- 创建技能对象
+-- Create your spells
+
+
 
 local NewSpell = Aurora.SpellHandler.NewSpell
 
 
 
--- 注册术士（WARLOCK）专精ID 1（痛苦/毁灭/恶魔学识需根据实际调整，此处默认核心专精）
+
+
+
 
 Aurora.SpellHandler.PopulateSpellbook({
 
+
+
     spells = {
 
-        -- 战斗前技能
+        AutoAttack         = NewSpell(6603),                    -- 自动攻击
 
-        summon_pet = NewSpell(691),               -- 召唤宠物
+        Charge             = NewSpell(100),                     -- 冲锋
 
-        grimoire_of_sacrifice = NewSpell(108503), -- 牺牲魔典
+        shield_slam        = NewSpell(23922),                   -- 盾牌猛击
 
-        soul_fire = NewSpell(6353),               -- 灵魂之火
+        Ravager            = NewSpell(228920, { radius = 8, }), -- 破坏者
 
-        incinerate = NewSpell(29722),             -- 烧尽
+        demoralizing_shout = NewSpell(1160),                    -- 挫志怒吼
 
+        shield_charge      = NewSpell(385952),                  -- 盾牌冲锋
 
+        avatar             = NewSpell(107574),                  -- 天神下凡
 
-        -- 辅助战斗技能
-
-        cataclysm = NewSpell(152108, { radius = 8 }),      -- 大灾变
-
-        wither = NewSpell(445468),                         -- 枯萎
-
-        infernal_bolt = NewSpell(434506),                  -- 狱火箭
-
-        malevolence = NewSpell(442726),                    -- 怨毒
-
-        channel_demonfire = NewSpell(196447),              -- 引导恶魔之火
-
-        rain_of_fire = NewSpell(5740, { radius = 8 }),     -- 火焰之雨
-
-        shadowburn = NewSpell(17877),                      -- 暗影灼烧
-
-        conflagrate = NewSpell(17962),                     -- 燃烧
-
-        ruination = NewSpell(434635),                      -- 陨灭 使徒天赋 混乱箭衍生
-
-        chaos_bolt = NewSpell(116858),                     -- 混乱箭（需确认正确ID）
-
-        dimensional_rift = NewSpell(387976),               -- 维度裂隙
-
-        summon_infernal = NewSpell(1122, { radius = 10 }), -- 召唤地狱火
-
-        Soulstone = NewSpell(20707),                       --灵魂石
-
-        Burning_Rush = NewSpell(111400),                   --爆燃冲刺 火跑
-
-        Kureshuaijie = NewSpell(456939),                   --酷热衰竭 天赋
-
-        Moxingxiongcan = NewSpell(456943),                 --魔性凶残 天赋
+        rallying_cry       = NewSpell(97462),                   -- 集结呐喊
 
 
 
-        --打断技能
+        --防御技能
 
-        spell_lock = NewSpell(119910),        -- 法术锁定 单体打断
+        shield_block     = NewSpell(2565),   -- 盾牌格挡
 
-        spell_lock_modian = NewSpell(132409), --牺牲魔典下的法术锁定
+        shield_wall      = NewSpell(871),    -- 盾墙
 
-        --硬控技能
+        ignore_pain      = NewSpell(190456), -- 无视苦痛
 
+        Defensive_Stance = NewSpell(386208), -- 防御姿态
 
+        Battle_Stance    = NewSpell(386164), -- 战斗姿态
 
-        Mortal_Coil = NewSpell(6789),                  --死亡缠绕 单体硬控
-
-        Shadowfury = NewSpell(30283, { radius = 10 }), --暗影之怒 群体硬控
-
-
-
-        --减伤技能
-
-        Dark_Pact = NewSpell(108416),        -- 暗影契约 小减伤 45s cd
-
-        Unending_Resolve = NewSpell(104773), -- 不灭决心 大减伤 180s cd
+        Stoneform        = NewSpell(20594),  -- 石像形态
 
 
 
-        -- 宠物召唤技能
-
-        Fel_Domination = NewSpell(333889), -- 邪能统御 --释放后可以无施法时间 直接召唤宠物 在释放宠物前 释放此技能
-
-        summon_imp = NewSpell(688),        -- 召唤小鬼
-
-        summon_voidwalker = NewSpell(697), --召唤虚空行者
-
-        summon_Sayaad = NewSpell(366222),  -- 召唤赛亚德
-
-        summon_felhunter = NewSpell(691),  -- 召唤地狱猎犬
 
 
+        --输出技能
 
-        -- 冷却技能
+        Champions_spear = NewSpell(376079, { radius = 8, }), -- 冠军之矛
 
-        blood_fury = NewSpell(20572),      -- 血怒（兽人种族技能）
+        demolish        = NewSpell(436358),                  -- 摧毁
 
-        berserking = NewSpell(26297),      -- 狂暴（巨魔种族技能）
+        thunderous_roar = NewSpell(384318),                  -- 雷霆咆哮
 
-        fireblood = NewSpell(265221),      -- 火焰之血（血精灵/地精等种族技能）
+        thunder_clap    = NewSpell(6343),                    -- 雷霆一击
 
-        ancestral_call = NewSpell(274738), -- 先祖召唤（德莱尼种族技能）
+        thunder_blast   = NewSpell(435222),                  -- 雷霆轰击
 
 
 
-        -- 【新增】快速放门宏相关技能
+        -- 新增技能
 
-        soul_burn = NewSpell(74434),        -- 灵魂燃烧
+        revenge       = NewSpell(6572),   -- 复仇
 
-        demonic_gateway = NewSpell(111771), -- 恶魔传送门
+        execute       = NewSpell(163201), -- 处决
+
+        last_stand    = NewSpell(12975),  -- 破釜沉舟
+
+        spell_reflect = NewSpell(23920),  -- 法术反射
+
+        heroic_throw  = NewSpell(57755),  -- 英勇投掷
+
+        victory_rush  = NewSpell(202168), -- 乘胜追击
+
+        Battle_Shout  = NewSpell(6673),   -- 战斗怒吼
+
+
+
+        -- 打断技能
+
+        pummel         = NewSpell(6552),   -- 拳击
+
+        storm_bolt     = NewSpell(107570), -- 风暴之锤
+
+        shockwave      = NewSpell(46968),  -- 震荡波
+
+        arcane_torrent = NewSpell(386071), -- 瓦解怒吼
+
+
+
+        -- 嘲讽技能
+
+        taunt             = NewSpell(355),  -- 嘲讽
+
+        challenging_shout = NewSpell(1161), -- 挑战怒吼
 
     },
+
+
 
     auras = {
 
-        -- 光环注册（对应dot/buff）
+        shield_block_buff = NewSpell(132404), -- 盾牌格挡buff
 
-        immolate = NewSpell(34884),                    -- 献祭dot
+        overpower = NewSpell(386486),         -- 怒意迸发层数
 
-        wither_dot = NewSpell(445474),                 -- 枯萎dot
+        overpower_buff = NewSpell(386478),    -- 怒意迸发buff
 
-        grimoire_of_sacrifice_buff = NewSpell(108503), -- 牺牲魔典buff
-
-        infernal_bolt_buff = NewSpell(348890),         -- 地狱火螺栓buff
-
-        decimation = NewSpell(264170),                 -- 毁灭buff
-
-        backdraft = NewSpell(117828),                  -- 顺风buff
-
-        ritual_of_ruin = NewSpell(391924),             -- 毁灭仪式buff
+        victory_rush_buff = NewSpell(32216)   -- 乘胜追击buff
 
     },
 
+
+
     talents = {
 
-        grimoire_of_sacrifice = NewSpell(108503), -- 牺牲魔典天赋
-
-        wither_talent = NewSpell(445468),         -- 枯萎天赋
+        booming_voice = NewSpell(202743) -- 震耳噪音
 
     }
 
-}, "WARLOCK", 3, "RoyWarlock") -- 最后一个参数为自定义命名空间
+
+
+}, "WARRIOR", 3, "MiracleWarrior")

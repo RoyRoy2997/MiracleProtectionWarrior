@@ -1,225 +1,265 @@
--- RoyWarlock 设置界面
+-- MiracleWarrior 设置界面
 local gui = Aurora.GuiBuilder:New()
 
--- 本地化文本
+-- 本地化文本表
 local L = {
     zh = {
-        category = "Roy_Warlock设置",
-        general = "通用设置",
+        -- Category and Tab names
+        category = "MiracleWarrior设置",
+        general = "常用设置",
         combat = "战斗设置",
-        features = "功能设置",
         defensive = "减伤设置",
-        special = "特殊功能",
+        interrupt = "打断设置",
+        trinket = "饰品设置",
+        advanced = "功能设置",
 
-        -- 通用设置
+        -- General Settings
         language = "界面语言",
-        language_tooltip = "选择界面显示语言",
+        language_tooltip = "选择界面显示语言，切换后请自行/reload",
         tutorial = "使用教程",
-        tutorial_text = "毁灭术专精循环，包含智能宠物管理、基础减伤和打断功能。",
+        tutorial_text = "Miracle拥有自创HyperBurst系统，让你更智能化的打出最高雷霆轰击伤害。打断依靠Aurora list managerment，减伤自动应对。有问题及时反馈，祝您战斗愉快！",
 
-        -- 战斗设置
-        aoe_settings = "AOE设置",
+        macro_reference = "宏命令参考",
+        macro_text = [[
+/aurora taunt - 切换嘲讽状态
+/aurora defensive - 切换减伤状态
+/aurora reflect - 切换反射状态
+/aurora victory - 切换乘胜追击状态
+/aurora rally - 切换集结呐喊状态
+/aurora charge - 切换盾牌冲锋状态
+/aurora hardcontrol - 切换硬控打断状态
+/aurora shout - 切换挫志怒吼状态]],
+
+
+        -- Combat Settings
+        basic_settings = "基础设置",
+        rage_threshold = "怒气阈值",
+        rage_threshold_tooltip = "当怒气达到此值时使用无视苦痛",
         aoe_threshold = "AOE阈值",
-        aoe_threshold_tooltip = "敌人数量达到此值时释放AOE技能（火焰之雨）",
-
-        cataclysm_settings = "大灾变设置",
-        cataclysm_threshold = "大灾变AOE阈值",
-        cataclysm_threshold_tooltip = "敌人数量达到此值时释放大灾变",
+        aoe_threshold_tooltip = "周围敌人数量达到此值时优先使用AOE技能",
 
         ttd_settings = "TTD设置",
         ttd_enabled = "启用TTD判断",
-        ttd_enabled_tooltip = "启用时间到死亡判断，控制冷却技能释放",
+        ttd_enabled_tooltip = "启用时间到死亡判断，避免在目标即将死亡时使用长冷却技能",
         ttd_threshold = "TTD阈值(秒)",
-        ttd_threshold_tooltip = "目标剩余存活时间高于此值时才会释放冷却技能",
+        ttd_threshold_tooltip = "目标剩余存活时间低于此值时不会使用长冷却技能",
 
-        wither_settings = "枯萎设置",
-        wither_max_targets = "补枯萎最大目标数",
-        wither_max_targets_tooltip = "战斗中拥有枯萎debuff的敌人超过此数量时停止补枯萎",
+        -- Defensive Settings
+        health_threshold = "血量阈值设置",
+        victory_rush_health = "乘胜追击血量(%)",
+        victory_rush_health_tooltip = "血量低于此值时使用乘胜追击",
+        rallying_cry_health = "集结呐喊血量(%)",
+        rallying_cry_health_tooltip = "团队平均血量低于此值时使用集结呐喊",
+        shield_wall_health = "盾墙血量(%)",
+        shield_wall_health_tooltip = "血量低于此值时使用盾墙",
+        last_stand_health = "破釜沉舟血量(%)",
+        last_stand_health_tooltip = "血量低于此值时使用破釜沉舟",
 
-        -- 功能设置
-        pet_settings = "宠物设置",
-        auto_summon_pet = "自动召唤宠物",
-        auto_summon_pet_tooltip = "启用自动召唤宠物功能",
-        use_fel_domination = "使用邪能统御",
-        use_fel_domination_tooltip = "启用邪能统御快速召唤宠物",
-        selected_pet = "首选宠物",
-        selected_pet_tooltip = "选择自动召唤的宠物类型",
-        pet_options = {
-            imp = "小鬼",
-            voidwalker = "虚空行者",
-            sayaad = "魅魔",
-            felhunter = "地狱猎犬"
-        },
+        -- Interrupt Settings
+        interrupt_timing = "打断时机设置",
+        random_interrupt = "随机打断时间",
+        random_interrupt_tooltip = "为打断添加随机延迟，避免被检测",
+        min_delay = "最小延迟(秒)",
+        min_delay_tooltip = "打断的最小延迟时间",
+        max_delay = "最大延迟(秒)",
+        max_delay_tooltip = "打断的最大延迟时间",
+        interrupt_percent = "打断进度(%)",
+        interrupt_percent_tooltip = "施法进度达到此百分比时进行打断",
 
-        interrupt_settings = "打断设置",
-        interrupt_enabled = "启用自动打断",
-        interrupt_enabled_tooltip = "启用自动打断敌方施法",
-        hard_control_enabled = "启用硬控打断",
-        hard_control_enabled_tooltip = "启用暗影之怒进行AOE硬控打断",
-        use_mortal_coil_interrupt = "使用死亡缠绕打断",
-        use_mortal_coil_interrupt_tooltip = "在硬控打断中使用死亡缠绕",
+        -- Trinket Settings
+        trinket1_settings = "饰品1设置",
+        trinket1_mode = "饰品1使用模式",
+        trinket1_health = "饰品1血量阈值(%)",
+        trinket1_health_tooltip = "血量低于此值时自动使用饰品1",
 
-        trinket_settings = "饰品设置",
-        trinket_mode = "饰品使用模式",
-        trinket_mode_tooltip = "选择饰品的使用时机",
+        trinket2_settings = "饰品2设置",
+        trinket2_mode = "饰品2使用模式",
+        trinket2_health = "饰品2血量阈值(%)",
+        trinket2_health_tooltip = "血量低于此值时自动使用饰品2",
+
         trinket_modes = {
-            infernal = "召唤地狱火时使用",
             cd = "卡CD使用",
+            avatar = "天神下凡时使用",
+            health = "血量低于设定值时使用",
             none = "不使用"
         },
 
-        -- 减伤设置
-        health_threshold = "减伤技能设置",
-        dark_pact_health = "暗影契约血量(%)",
-        dark_pact_health_tooltip = "血量低于此值时使用暗影契约",
-        unending_resolve_health = "不灭决心血量(%)",
-        unending_resolve_health_tooltip = "血量低于此值时使用不灭决心",
-        mortal_coil_health = "死亡缠绕血量(%)",
-        mortal_coil_health_tooltip = "血量低于此值时使用死亡缠绕",
-
+        -- Advanced Settings
         potion_settings = "药水设置",
-        potion_mode = "爆发药水使用模式",
-        potion_mode_tooltip = "选择爆发药水的使用时机",
-        potion_modes = {
-            infernal = "召唤地狱火时使用",
-            cd = "卡CD使用",
-            none = "不使用"
-        },
+        burst_potion = "爆发药水",
+        burst_potion_tooltip = "选择爆发药水的使用策略",
         heal_potion_health = "治疗药水血量(%)",
-        heal_potion_health_tooltip = "血量低于此值时使用治疗药水",
+        heal_potion_health_tooltip = "血量低于此值时自动使用治疗药水",
 
-        -- 特殊功能
-        burning_rush_settings = "爆燃冲刺设置",
-        burning_rush_enabled = "启用爆燃冲刺",
-        burning_rush_enabled_tooltip = "自动管理爆燃冲刺的开启和关闭",
-        burning_rush_health = "火跑最低血量(%)",
-        burning_rush_health_tooltip = "血量低于此值时自动关闭火跑",
-        burning_rush_move_time = "移动时间阈值(秒)",
-        burning_rush_move_time_tooltip = "持续移动超过此时间自动开启火跑",
-        burning_rush_stand_time = "站立时间阈值(秒)",
-        burning_rush_stand_time_tooltip = "站立超过此时间自动关闭火跑",
+        advanced_settings = "高级设置",
+        battle_shout = "自动战斗怒吼",
+        battle_shout_tooltip = "战斗外自动为队友施放战斗怒吼",
+        overpower_wait = "怒意等待阈值(%)",
+        overpower_wait_tooltip = "怒意迸发进度达到此百分比时等待雷霆轰击冷却(100层=100%)",
+        thunder_priority = "雷霆优先级",
+        thunder_priority_tooltip = "雷霆一击的释放优先级",
 
-        gathering_settings = "聚拢检测设置",
-        gathering_check_enabled = "启用聚拢检测",
-        gathering_check_enabled_tooltip = "启用聚拢检测，控制AOE技能释放时机",
-        gathering_percentage = "聚拢百分比(%)",
-        gathering_percentage_tooltip = "坦克附近敌人占比达到此百分比才释放AOE技能"
+        priority_levels = {
+            high = "高",
+            medium = "中",
+            low = "低"
+        },
+
+        -- Status Bar Labels
+        status_taunt = "嘲讽",
+        status_defensive = "减伤",
+        status_reflect = "反射",
+        status_victory = "乘胜",
+        status_rally = "集结",
+        status_charge = "盾冲",
+        status_hardcontrol = "硬控",
+        status_shout = "挫志"
     },
 
     en = {
-        category = "Roy_Warlock Settings",
+        -- Category and Tab names
+        category = "MiracleWarrior Settings",
         general = "General Settings",
         combat = "Combat Settings",
-        features = "Feature Settings",
         defensive = "Defensive Settings",
-        special = "Special Functions",
+        interrupt = "Interrupt Settings",
+        trinket = "Trinket Settings",
+        advanced = "Advanced Settings",
 
+        -- General Settings
         language = "Interface Language",
         language_tooltip = "Select interface display language",
         tutorial = "Usage Tutorial",
-        tutorial_text = "Destruction Warlock rotation with smart pet management, basic defense and interrupt functions.",
+        tutorial_text =
+        "Miracle features the innovative HyperBurst system for optimal Thunder Blast damage. Interrupts rely on Aurora list management, defensive cooldowns are automated. Please report any issues. Enjoy your battles!",
 
-        aoe_settings = "AOE Settings",
+        macro_reference = "Macro Reference",
+        macro_text = [[
+/aurora taunt - Toggle taunt status
+/aurora defensive - Toggle defensive status
+/aurora reflect - Toggle spell reflect status
+/aurora victory - Toggle victory rush status
+/aurora rally - Toggle rallying cry status
+/aurora charge - Toggle shield charge status
+/aurora hardcontrol - Toggle hard control interrupt status
+/aurora shout - Toggle demoralizing shout status]],
+
+        status_bar_info = "Status Bar Control",
+        status_bar_text = [[Following features moved to status bar:
+• Taunt • Defensive • Reflect • Victory Rush
+• Rallying Cry • Shield Charge • Hard Control • Demoralizing Shout
+
+Status bar located at top of screen for quick toggling]],
+
+        -- Combat Settings
+        basic_settings = "Basic Settings",
+        rage_threshold = "Rage Threshold",
+        rage_threshold_tooltip = "Use Ignore Pain when rage reaches this value",
         aoe_threshold = "AOE Threshold",
-        aoe_threshold_tooltip = "Number of enemies required to cast AOE skills (Rain of Fire)",
-
-        cataclysm_settings = "Cataclysm Settings",
-        cataclysm_threshold = "Cataclysm AOE Threshold",
-        cataclysm_threshold_tooltip = "Number of enemies required to cast Cataclysm",
+        aoe_threshold_tooltip = "Prioritize AOE skills when enemy count reaches this value",
 
         ttd_settings = "TTD Settings",
         ttd_enabled = "Enable TTD Check",
-        ttd_enabled_tooltip = "Enable time-to-death checking to control cooldown skill usage",
+        ttd_enabled_tooltip = "Enable time-to-death checking to avoid using long cooldowns on dying targets",
         ttd_threshold = "TTD Threshold(sec)",
-        ttd_threshold_tooltip = "Only use cooldown skills when target TTD is above this value",
+        ttd_threshold_tooltip = "Don't use long cooldowns if target TTD is below this value",
 
-        wither_settings = "Wither Settings",
-        wither_max_targets = "Max Wither Targets",
-        wither_max_targets_tooltip =
-        "Stop refreshing Wither when number of enemies with Wither debuff exceeds this value",
+        -- Defensive Settings
+        health_threshold = "Health Threshold Settings",
+        victory_rush_health = "Victory Rush Health(%)",
+        victory_rush_health_tooltip = "Use Victory Rush when health below this value",
+        rallying_cry_health = "Rallying Cry Health(%)",
+        rallying_cry_health_tooltip = "Use Rallying Cry when average team health below this value",
+        shield_wall_health = "Shield Wall Health(%)",
+        shield_wall_health_tooltip = "Use Shield Wall when health below this value",
+        last_stand_health = "Last Stand Health(%)",
+        last_stand_health_tooltip = "Use Last Stand when health below this value",
 
-        pet_settings = "Pet Settings",
-        auto_summon_pet = "Auto Summon Pet",
-        auto_summon_pet_tooltip = "Enable automatic pet summoning",
-        use_fel_domination = "Use Fel Domination",
-        use_fel_domination_tooltip = "Enable Fel Domination for quick pet summoning",
-        selected_pet = "Preferred Pet",
-        selected_pet_tooltip = "Select pet type for automatic summoning",
-        pet_options = {
-            imp = "Imp",
-            voidwalker = "Voidwalker",
-            sayaad = "Succubus",
-            felhunter = "Felhunter"
-        },
+        -- Interrupt Settings
+        interrupt_timing = "Interrupt Timing Settings",
+        random_interrupt = "Random Interrupt Time",
+        random_interrupt_tooltip = "Add random delay to interrupts to avoid detection",
+        min_delay = "Min Delay(sec)",
+        min_delay_tooltip = "Minimum delay time for interrupts",
+        max_delay = "Max Delay(sec)",
+        max_delay_tooltip = "Maximum delay time for interrupts",
+        interrupt_percent = "Interrupt Progress(%)",
+        interrupt_percent_tooltip = "Interrupt when cast progress reaches this percentage",
 
-        interrupt_settings = "Interrupt Settings",
-        interrupt_enabled = "Enable Auto Interrupt",
-        interrupt_enabled_tooltip = "Enable automatic interruption of enemy casts",
-        hard_control_enabled = "Enable Hard Control Interrupt",
-        hard_control_enabled_tooltip = "Enable Shadowfury for AOE hard control interrupts",
-        use_mortal_coil_interrupt = "Use Mortal Coil Interrupt",
-        use_mortal_coil_interrupt_tooltip = "Use Mortal Coil in hard control interrupts",
+        -- Trinket Settings
+        trinket1_settings = "Trinket 1 Settings",
+        trinket1_mode = "Trinket 1 Usage Mode",
+        trinket1_health = "Trinket 1 Health Threshold(%)",
+        trinket1_health_tooltip = "Automatically use Trinket 1 when health below this value",
 
-        trinket_settings = "Trinket Settings",
-        trinket_mode = "Trinket Usage Mode",
-        trinket_mode_tooltip = "Select when to use trinkets",
+        trinket2_settings = "Trinket 2 Settings",
+        trinket2_mode = "Trinket 2 Usage Mode",
+        trinket2_health = "Trinket 2 Health Threshold(%)",
+        trinket2_health_tooltip = "Automatically use Trinket 2 when health below this value",
+
         trinket_modes = {
-            infernal = "Use with Summon Infernal",
-            cd = "Use on Cooldown",
+            cd = "Use on CD",
+            avatar = "Use with Avatar",
+            health = "Use on Low Health",
             none = "Don't Use"
         },
 
-        health_threshold = "Defensive Skill Settings",
-        dark_pact_health = "Dark Pact Health(%)",
-        dark_pact_health_tooltip = "Use Dark Pact when health below this value",
-        unending_resolve_health = "Unending Resolve Health(%)",
-        unending_resolve_health_tooltip = "Use Unending Resolve when health below this value",
-        mortal_coil_health = "Mortal Coil Health(%)",
-        mortal_coil_health_tooltip = "Use Mortal Coil when health below this value",
-
+        -- Advanced Settings
         potion_settings = "Potion Settings",
-        potion_mode = "Burst Potion Mode",
-        potion_mode_tooltip = "Select when to use burst potions",
-        potion_modes = {
-            infernal = "Use with Summon Infernal",
-            cd = "Use on Cooldown",
-            none = "Don't Use"
-        },
+        burst_potion = "Burst Potion",
+        burst_potion_tooltip = "Select burst potion usage strategy",
         heal_potion_health = "Heal Potion Health(%)",
-        heal_potion_health_tooltip = "Use heal potion when health below this value",
+        heal_potion_health_tooltip = "Automatically use heal potion when health below this value",
 
-        burning_rush_settings = "Burning Rush Settings",
-        burning_rush_enabled = "Enable Burning Rush",
-        burning_rush_enabled_tooltip = "Automatically manage Burning Rush activation and deactivation",
-        burning_rush_health = "Burning Rush Min Health(%)",
-        burning_rush_health_tooltip = "Automatically disable Burning Rush when health below this value",
-        burning_rush_move_time = "Movement Time Threshold(sec)",
-        burning_rush_move_time_tooltip = "Automatically enable Burning Rush after moving for this duration",
-        burning_rush_stand_time = "Standing Time Threshold(sec)",
-        burning_rush_stand_time_tooltip = "Automatically disable Burning Rush after standing for this duration",
+        advanced_settings = "Advanced Settings",
+        battle_shout = "Auto Battle Shout",
+        battle_shout_tooltip = "Automatically cast Battle Shout on party members out of combat",
+        overpower_wait = "Overpower Wait Threshold(%)",
+        overpower_wait_tooltip =
+        "Wait for Thunder Blast cooldown when Overpower progress reaches this percentage (100 stacks = 100%)",
+        thunder_priority = "Thunder Priority",
+        thunder_priority_tooltip = "Thunder Clap casting priority",
 
-        gathering_settings = "Gathering Detection Settings",
-        gathering_check_enabled = "Enable Gathering Detection",
-        gathering_check_enabled_tooltip = "Enable gathering detection to control AOE skill usage",
-        gathering_percentage = "Gathering Percentage(%)",
-        gathering_percentage_tooltip = "Only use AOE skills when enemy percentage near tank reaches this value"
+        priority_levels = {
+            high = "High",
+            medium = "Medium",
+            low = "Low"
+        },
+
+        -- Status Bar Labels
+        status_taunt = "Taunt",
+        status_defensive = "Def",
+        status_reflect = "Reflect",
+        status_victory = "Victory",
+        status_rally = "Rally",
+        status_charge = "Charge",
+        status_hardcontrol = "HardCtrl",
+        status_shout = "Shout"
     }
 }
 
--- 获取本地化文本
+-- 获取当前语言文本
 local function T(key)
-    local language = Aurora.Config:Read("RoyWarlock.general.language") or "zh"
+    local language = Aurora.Config:Read("MiracleWarrior.general.language") or "zh"
     return L[language][key] or key
+end
+
+-- 获取当前语言
+local function GetLanguage()
+    return Aurora.Config:Read("MiracleWarrior.general.language") or "zh"
 end
 
 -- 创建界面
 local function CreateInterface()
+    local lang = GetLanguage()
+    local T = function(key) return L[lang][key] or key end
+
     gui:Category(T("category"))
         :Tab(T("general"))
         :Header({ text = T("language") })
         :Dropdown({
             text = T("language"),
-            key = "RoyWarlock.general.language",
+            key = "MiracleWarrior.general.language",
             options = {
                 { text = "中文", value = "zh" },
                 { text = "English", value = "en" }
@@ -227,10 +267,10 @@ local function CreateInterface()
             default = "zh",
             tooltip = T("language_tooltip"),
             onChange = function(value)
-                Aurora.alert("Language changed to " .. value .. ". Please /reload to apply changes.", 116858)
+                Aurora.alert("Language changed to " .. value .. ". Please /reload to apply changes.", 132306)
             end
         })
-
+        :Spacer()
 
         :Header({ text = T("tutorial") })
         :Text({
@@ -238,325 +278,357 @@ local function CreateInterface()
             color = "normal",
             size = 10
         })
+        :Spacer()
 
+
+
+    -- 【新增】宏命令参考
+        :Header({ text = T("macro_reference") })
+        :Text({
+            text = "/aurora taunt - 切换嘲讽状态",
+            color = "normal",
+            size = 11
+        })
+        :Text({
+            text = " /aurora shout - 切换挫志怒吼状态",
+            color = "normal",
+            size = 11
+        })
+        :Text({
+            text = "/aurora defensive - 切换减伤状态",
+            color = "normal",
+            size = 11
+        })
+        :Text({
+            text = "/aurora reflect - 切换反射状态",
+            color = "normal",
+            size = 11
+        })
+        :Text({
+            text = "/aurora victory - 切换乘胜追击状态",
+            color = "normal",
+            size = 11
+        })
+        :Text({
+            text = "/aurora rally - 切换集结呐喊状态",
+            color = "normal",
+            size = 11
+        })
+        :Text({
+            text = "/aurora charge - 切换盾牌冲锋状态",
+            color = "normal",
+            size = 11
+        })
+        :Text({
+            text = "/aurora hardcontrol - 切换硬控打断状态",
+            color = "normal",
+            size = 11
+        })
+
+
+
+
+
+
+    -- 战斗设置 - 删除已由状态栏控制的选项，美化布局
         :Tab(T("combat"))
-        :Header({ text = T("aoe_settings") })
+        :Header({ text = T("basic_settings") })
+        :Slider({
+            text = T("rage_threshold"),
+            key = "MiracleWarrior.rage_threshold",
+            min = 10,
+            max = 100,
+            step = 5,
+            default = 40,
+            tooltip = T("rage_threshold_tooltip")
+        })
         :Slider({
             text = T("aoe_threshold"),
-            key = "RoyWarlock.aoe_threshold",
+            key = "MiracleWarrior.aoe_threshold",
             min = 1,
             max = 10,
             step = 1,
             default = 3,
             tooltip = T("aoe_threshold_tooltip")
         })
-        :Slider({
-            text = T("cataclysm_threshold"),
-            key = "RoyWarlock.cataclysm_threshold",
-            min = 1,
-            max = 10,
-            step = 1,
-            default = 3,
-            tooltip = T("cataclysm_threshold_tooltip")
-        })
-
+        :Spacer()
 
         :Header({ text = T("ttd_settings") })
         :Checkbox({
             text = T("ttd_enabled"),
-            key = "RoyWarlock.ttd_enabled",
+            key = "MiracleWarrior.ttd_enabled",
             default = true,
             tooltip = T("ttd_enabled_tooltip")
         })
         :Slider({
             text = T("ttd_threshold"),
-            key = "RoyWarlock.ttd_threshold",
-            min = 0,
+            key = "MiracleWarrior.ttd_threshold",
+            min = 5,
             max = 30,
             step = 1,
             default = 15,
             tooltip = T("ttd_threshold_tooltip")
         })
 
-
-        :Header({ text = T("wither_settings") })
-        :Slider({
-            text = T("wither_max_targets"),
-            key = "RoyWarlock.wither_max_targets",
-            min = 1,
-            max = 20,
-            step = 1,
-            default = 10,
-            tooltip = T("wither_max_targets_tooltip")
-        })
-
-
-        :Tab(T("features"))
-        :Header({ text = T("pet_settings") })
-        :Checkbox({
-            text = T("auto_summon_pet"),
-            key = "RoyWarlock.auto_summon_pet",
-            default = true,
-            tooltip = T("auto_summon_pet_tooltip")
-        })
-        :Checkbox({
-            text = T("use_fel_domination"),
-            key = "RoyWarlock.use_fel_domination",
-            default = true,
-            tooltip = T("use_fel_domination_tooltip")
-        })
-        :Dropdown({
-            text = T("selected_pet"),
-            key = "RoyWarlock.selected_pet",
-            options = {
-                { text = T("小鬼"), value = "imp" },
-                { text = T("虚空行者"), value = "voidwalker" },
-                { text = T("魅魔"), value = "sayaad" },
-                { text = T("地狱猎犬"), value = "felhunter" }
-            },
-            default = "felhunter",
-            tooltip = T("selected_pet_tooltip")
-        })
-
-
-        :Header({ text = T("interrupt_settings") })
-        :Checkbox({
-            text = T("interrupt_enabled"),
-            key = "RoyWarlock.interrupt_enabled",
-            default = true,
-            tooltip = T("interrupt_enabled_tooltip")
-        })
-        :Checkbox({
-            text = T("hard_control_enabled"),
-            key = "RoyWarlock.hard_control_enabled",
-            default = true,
-            tooltip = T("hard_control_enabled_tooltip")
-        })
-        :Checkbox({
-            text = T("use_mortal_coil_interrupt"),
-            key = "RoyWarlock.use_mortal_coil_interrupt",
-            default = true,
-            tooltip = T("use_mortal_coil_interrupt_tooltip")
-        })
-
-
-        :Header({ text = T("trinket_settings") })
-        :Dropdown({
-            text = T("trinket_mode"),
-            key = "RoyWarlock.trinket_mode",
-            options = {
-                { text = T("联动地狱火"), value = "infernal" },
-                { text = T("卡CD使用"), value = "cd" },
-                { text = T("不使用"), value = "none" }
-            },
-            default = "infernal",
-            tooltip = T("trinket_mode_tooltip")
-        })
-
-
+    -- 减伤设置 - 删除已由状态栏控制的选项，只保留血量阈值
         :Tab(T("defensive"))
         :Header({ text = T("health_threshold") })
         :Slider({
-            text = T("dark_pact_health"),
-            key = "RoyWarlock.dark_pact_health",
+            text = T("victory_rush_health"),
+            key = "MiracleWarrior.victory_rush_health",
             min = 20,
+            max = 80,
+            step = 5,
+            default = 60,
+            tooltip = T("victory_rush_health_tooltip")
+        })
+        :Slider({
+            text = T("rallying_cry_health"),
+            key = "MiracleWarrior.rallying_cry_health",
+            min = 20,
+            max = 80,
+            step = 5,
+            default = 50,
+            tooltip = T("rallying_cry_health_tooltip")
+        })
+        :Slider({
+            text = T("shield_wall_health"),
+            key = "MiracleWarrior.shield_wall_health",
+            min = 10,
+            max = 100,
+            step = 5,
+            default = 70,
+            tooltip = T("shield_wall_health_tooltip")
+        })
+        :Slider({
+            text = T("last_stand_health"),
+            key = "MiracleWarrior.last_stand_health",
+            min = 10,
             max = 100,
             step = 5,
             default = 40,
-            tooltip = T("dark_pact_health_tooltip")
-        })
-        :Slider({
-            text = T("unending_resolve_health"),
-            key = "RoyWarlock.unending_resolve_health",
-            min = 10,
-            max = 100,
-            step = 5,
-            default = 20,
-            tooltip = T("unending_resolve_health_tooltip")
-        })
-        :Slider({
-            text = T("mortal_coil_health"),
-            key = "RoyWarlock.mortal_coil_health",
-            min = 10,
-            max = 100,
-            step = 5,
-            default = 60,
-            tooltip = T("mortal_coil_health_tooltip")
+            tooltip = T("last_stand_health_tooltip")
         })
 
+    -- 打断设置 - 删除已由状态栏控制的选项，只保留时机设置
+        :Tab(T("interrupt"))
+        :Header({ text = T("interrupt_timing") })
+        :Checkbox({
+            text = T("random_interrupt"),
+            key = "MiracleWarrior.random_interrupt",
+            default = true,
+            tooltip = T("random_interrupt_tooltip")
+        })
+        :Slider({
+            text = T("min_delay"),
+            key = "MiracleWarrior.min_interrupt_delay",
+            min = 0,
+            max = 1,
+            step = 0.1,
+            default = 0,
+            tooltip = T("min_delay_tooltip")
+        })
+        :Slider({
+            text = T("max_delay"),
+            key = "MiracleWarrior.max_interrupt_delay",
+            min = 0.5,
+            max = 1,
+            step = 0.1,
+            default = 0.5,
+            tooltip = T("max_delay_tooltip")
+        })
+        :Slider({
+            text = T("interrupt_percent"),
+            key = "MiracleWarrior.interrupt_cast_percent",
+            min = 10,
+            max = 90,
+            step = 5,
+            default = 50,
+            tooltip = T("interrupt_percent_tooltip")
+        })
 
+    -- 饰品设置 - 美化布局
+        :Tab(T("trinket"))
+        :Header({ text = T("trinket1_settings") })
+        :Dropdown({
+            text = T("trinket1_mode"),
+            key = "MiracleWarrior.trinket1_mode",
+            options = {
+                { text = T("trinket_modes.cd"),     value = "cd" },
+                { text = T("trinket_modes.avatar"), value = "avatar" },
+                { text = T("trinket_modes.health"), value = "health" },
+                { text = T("trinket_modes.none"),   value = "none" }
+            },
+            default = "cd",
+            tooltip = T("trinket1_mode")
+        })
+        :Slider({
+            text = T("trinket1_health"),
+            key = "MiracleWarrior.trinket1_health_threshold",
+            min = 10,
+            max = 50,
+            step = 5,
+            default = 30,
+            tooltip = T("trinket1_health_tooltip")
+        })
+        :Spacer()
+
+        :Header({ text = T("trinket2_settings") })
+        :Dropdown({
+            text = T("trinket2_mode"),
+            key = "MiracleWarrior.trinket2_mode",
+            options = {
+                { text = T("trinket_modes.cd"),     value = "cd" },
+                { text = T("trinket_modes.avatar"), value = "avatar" },
+                { text = T("trinket_modes.health"), value = "health" },
+                { text = T("trinket_modes.none"),   value = "none" }
+            },
+            default = "cd",
+            tooltip = T("trinket2_mode")
+        })
+        :Slider({
+            text = T("trinket2_health"),
+            key = "MiracleWarrior.trinket2_health_threshold",
+            min = 10,
+            max = 50,
+            step = 5,
+            default = 30,
+            tooltip = T("trinket2_health_tooltip")
+        })
+
+    -- 功能设置 - 美化布局
+        :Tab(T("advanced"))
         :Header({ text = T("potion_settings") })
         :Dropdown({
-            text = T("potion_mode"),
-            key = "RoyWarlock.potion_mode",
+            text = T("burst_potion"),
+            key = "MiracleWarrior.burst_potion_mode",
             options = {
-                { text = T("联动地狱火"), value = "infernal" },
-                { text = T("卡CD使用"), value = "cd" },
-                { text = T("不使用"), value = "none" }
+                { text = T("trinket_modes.cd"),     value = "cd" },
+                { text = T("trinket_modes.avatar"), value = "avatar" },
+                { text = T("trinket_modes.none"),   value = "none" }
             },
-            default = "infernal",
-            tooltip = T("potion_mode_tooltip")
+            default = "cd",
+            tooltip = T("burst_potion_tooltip")
         })
         :Slider({
             text = T("heal_potion_health"),
-            key = "RoyWarlock.heal_potion_health",
+            key = "MiracleWarrior.heal_potion_health",
             min = 10,
             max = 50,
             step = 5,
             default = 30,
             tooltip = T("heal_potion_health_tooltip")
         })
+        :Spacer()
 
-
-    -- 在特殊功能页面添加脱战启用选项
-        :Tab(T("special"))
-        :Header({ text = T("burning_rush_settings") })
+        :Header({ text = T("advanced_settings") })
         :Checkbox({
-            text = T("burning_rush_enabled"),
-            key = "RoyWarlock.burning_rush_enabled",
-            default = false,
-            tooltip = T("burning_rush_enabled_tooltip")
-        })
-        :Checkbox({
-            text = "脱战启用爆燃冲刺",
-            key = "RoyWarlock.burning_rush_ooc",
-            default = false,
-            tooltip = "在非战斗状态也启用爆燃冲刺自动管理"
+            text = T("battle_shout"),
+            key = "MiracleWarrior.battle_shout_enabled",
+            default = true,
+            tooltip = T("battle_shout_tooltip")
         })
         :Slider({
-            text = T("burning_rush_health"),
-            key = "RoyWarlock.burning_rush_health",
-            min = 10,
-            max = 100,
+            text = T("overpower_wait"),
+            key = "MiracleWarrior.overpower_wait",
+            min = 50,
+            max = 95,
             step = 5,
-            default = 50,
-            tooltip = T("burning_rush_health_tooltip")
+            default = 80,
+            tooltip = T("overpower_wait_tooltip")
         })
-        :Slider({
-            text = T("burning_rush_move_time"),
-            key = "RoyWarlock.burning_rush_move_time",
-            min = 1,
-            max = 10,
-            step = 0.5,
-            default = 1.5,
-            tooltip = T("burning_rush_move_time_tooltip")
-        })
-        :Slider({
-            text = T("burning_rush_stand_time"),
-            key = "RoyWarlock.burning_rush_stand_time",
-            min = 1,
-            max = 10,
-            step = 0.5,
-            default = 1.5,
-            tooltip = T("burning_rush_stand_time_tooltip")
-        })
-        :Header({ text = T("gathering_settings") })
-        :Checkbox({
-            text = T("gathering_check_enabled"),
-            key = "RoyWarlock.gathering_check_enabled",
-            default = false,
-            tooltip = T("gathering_check_enabled_tooltip")
-        })
-        :Slider({
-            text = T("gathering_percentage"),
-            key = "RoyWarlock.gathering_percentage",
-            min = 10,
-            max = 100,
-            step = 5,
-            default = 75,
-            tooltip = T("gathering_percentage_tooltip")
+        :Dropdown({
+            text = T("thunder_priority"),
+            key = "MiracleWarrior.thunder_priority",
+            options = {
+                { text = T("priority_levels.high"),   value = "high" },
+                { text = T("priority_levels.medium"), value = "medium" },
+                { text = T("priority_levels.low"),    value = "low" }
+            },
+            default = "medium",
+            tooltip = T("thunder_priority_tooltip")
         })
 end
 
--- 注册状态栏
+-- MiracleWarrior 状态栏设置
 local function RegisterStatusToggles()
-    -- 尝试通过状态栏对象本身删除
-    if Aurora.Rotation.Cooldown and Aurora.Rotation.Cooldown.var then
-        local removed = Aurora:RemoveGlobalToggle(Aurora.Rotation.Cooldown.var)
-        if removed then
-            print("成功删除冷却状态栏")
-        else
-            print("冷却状态栏删除失败")
-        end
-    end
-
-    if Aurora.Rotation.Interrupt and Aurora.Rotation.Interrupt.var then
-        local removed = Aurora:RemoveGlobalToggle(Aurora.Rotation.Interrupt.var)
-        if removed then
-            print("成功删除打断状态栏")
-        else
-            print("打断状态栏删除失败")
-        end
-    end
-
-    -- 添加新的状态栏
-    Aurora.Rotation.SmallBurstToggle = Aurora:AddGlobalToggle({
-        label = "小爆发",
-        var = "RoyWarlock_SmallBurst",
-        icon = 442726, -- 怨毒图标
-        tooltip = "启用怨毒",
+    -- 直接使用Aurora的全局状态栏API
+    Aurora.Rotation.TauntToggle = Aurora:AddGlobalToggle({
+        label = "嘲讽",
+        var = "MiracleWarrior_Taunt",
+        icon = 355, -- 嘲讽图标
+        tooltip = "自动嘲讽攻击队友的敌人",
         default = true
     })
 
-    Aurora.Rotation.BigBurstToggle = Aurora:AddGlobalToggle({
-        label = "大爆发",
-        var = "RoyWarlock_BigBurst",
-        icon = 1122, -- 召唤地狱火图标
-        tooltip = "启用召唤地狱火",
-        default = true
-    })
-
-    Aurora.Rotation.RuinationToggle = Aurora:AddGlobalToggle({
-        label = "陨灭",
-        var = "RoyWarlock_Ruination",
-        icon = 434635, -- 陨灭图标
-        tooltip = "启用陨灭技能释放",
-        default = true
-    })
-
-    Aurora.Rotation.InterruptToggle = Aurora:AddGlobalToggle({
-        label = "打断",
-        var = "RoyWarlock_Interrupt",
-        icon = 119910, -- 法术锁定图标
-        tooltip = "启用自动打断",
-        default = true
-    })
-
-    -- 保留其他自定义状态栏
     Aurora.Rotation.DefensiveToggle = Aurora:AddGlobalToggle({
         label = "减伤",
-        var = "RoyWarlock_Defensive",
-        icon = 104773, -- 不灭决心图标
-        tooltip = "启用自动减伤",
+        var = "MiracleWarrior_Defensive",
+        icon = 871, -- 盾墙图标
+        tooltip = "根据血量自动使用减伤技能",
         default = true
     })
 
-
-    Aurora.Rotation.WitherToggle = Aurora:AddGlobalToggle({
-        label = "补枯萎",
-        var = "RoyWarlock_Wither",
-        icon = 445468, -- 枯萎图标
-        tooltip = "启用自动补枯萎dot",
+    Aurora.Rotation.SpellReflectToggle = Aurora:AddGlobalToggle({
+        label = "反射",
+        var = "MiracleWarrior_SpellReflect",
+        icon = 23920, -- 法术反射图标
+        tooltip = "自动使用法术反射",
         default = true
     })
 
-    Aurora.Rotation.ShadowburnToggle = Aurora:AddGlobalToggle({
-        label = "暗影灼烧",
-        var = "RoyWarlock_Shadowburn",
-        icon = 17877, -- 暗影灼烧图标
-        tooltip = "启用暗影灼烧技能",
+    Aurora.Rotation.VictoryRushToggle = Aurora:AddGlobalToggle({
+        label = "乘胜",
+        var = "MiracleWarrior_VictoryRush",
+        icon = 34428, -- 乘胜追击图标
+        tooltip = "自动使用乘胜追击进行治疗",
         default = true
     })
 
-    Aurora.Rotation.PrepullToggle = Aurora:AddGlobalToggle({
-        label = "拉怪补DOT",
-        var = "RoyWarlock_Prepull",
-        icon = 445468, -- 枯萎图标
-        tooltip = "启用拉怪补DOT模式，战斗10秒后自动关闭",
-        default = false
+    Aurora.Rotation.RallyingCryToggle = Aurora:AddGlobalToggle({
+        label = "集结",
+        var = "MiracleWarrior_RallyingCry",
+        icon = 97462, -- 集结呐喊图标
+        tooltip = "自动使用集结呐喊保护团队",
+        default = true
     })
 
-    print("RoyWarlock 状态栏已加载!")
+    Aurora.Rotation.ShieldChargeToggle = Aurora:AddGlobalToggle({
+        label = "盾冲",
+        var = "MiracleWarrior_ShieldCharge",
+        icon = 385952, -- 盾牌冲锋图标
+        tooltip = "启用/禁用盾牌冲锋技能",
+        default = true
+    })
+
+    Aurora.Rotation.HardControlInterruptToggle = Aurora:AddGlobalToggle({
+        label = "硬控",
+        var = "MiracleWarrior_HardControl",
+        icon = 46968, -- 震荡波图标
+        tooltip = "使用硬控技能进行打断",
+        default = true
+    })
+
+    -- 【新增】挫志怒吼状态栏
+    Aurora.Rotation.DemoralizingShoutToggle = Aurora:AddGlobalToggle({
+        label = "挫志",
+        var = "MiracleWarrior_DemoralizingShout",
+        icon = 1160, -- 挫志怒吼图标
+        tooltip = "自动使用挫志怒吼",
+        default = true
+    })
+    -- 【新增】智能姿态状态栏
+    Aurora.Rotation.SmartStanceToggle = Aurora:AddGlobalToggle({
+        label = "智能姿态",
+        var = "miraclewarrior_smart_stance",
+        icon = 386164, -- 战斗姿态图标
+        tooltip = "开启后天神下凡会切换战斗姿态（慎用）",
+        onClick = function(value)
+            print("智能姿态: " .. (value and "启用" or "禁用"))
+        end
+    })
+
+    print("MiracleWarrior 状态栏已加载!")
 end
 
 -- 创建界面
@@ -567,4 +639,5 @@ C_Timer.After(2, function()
     RegisterStatusToggles()
 end)
 
-print("RoyWarlock 界面已加载!")
+local loadedMsg = GetLanguage() == "zh" and "MiracleWarrior 界面已加载!" or "MiracleWarrior interface loaded!"
+print(loadedMsg)
